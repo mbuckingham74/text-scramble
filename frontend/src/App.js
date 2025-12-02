@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
+import sounds from './sounds';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
@@ -19,6 +20,7 @@ function App() {
   const [foundFullWord, setFoundFullWord] = useState(false);
   const [allWords, setAllWords] = useState([]);
   const [timedMode, setTimedMode] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const showMessage = (text, type = 'info') => {
     setMessage(text);
@@ -26,7 +28,13 @@ function App() {
     setTimeout(() => setMessage(''), 1500);
   };
 
+  const toggleSound = () => {
+    const enabled = sounds.toggle();
+    setSoundEnabled(enabled);
+  };
+
   const startGame = async (timed = true) => {
+    sounds.gameStart();
     setTimedMode(timed);
     setScore(0);
     setLevel(1);
@@ -55,6 +63,7 @@ function App() {
   };
 
   const shuffleLetters = () => {
+    sounds.shuffle();
     const shuffled = [...letters];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -67,29 +76,34 @@ function App() {
 
   const selectLetter = (index) => {
     if (selectedIndices.includes(index)) return;
+    sounds.letterClick();
     setSelectedIndices([...selectedIndices, index]);
     setCurrentWord(currentWord + letters[index]);
   };
 
   const removeLetter = () => {
     if (selectedIndices.length === 0) return;
+    sounds.letterRemove();
     setSelectedIndices(selectedIndices.slice(0, -1));
     setCurrentWord(currentWord.slice(0, -1));
   };
 
   const clearSelection = () => {
+    if (selectedIndices.length > 0) sounds.clearLetters();
     setSelectedIndices([]);
     setCurrentWord('');
   };
 
   const submitWord = async () => {
     if (currentWord.length < 3) {
+      sounds.wordInvalid();
       showMessage('Words must be at least 3 letters!', 'error');
       clearSelection();
       return;
     }
 
     if (foundWords.has(currentWord.toUpperCase())) {
+      sounds.wordDuplicate();
       showMessage('Already found!', 'error');
       clearSelection();
       return;
@@ -113,12 +127,15 @@ function App() {
         setScore(score + points);
 
         if (data.word.length === 6) {
+          sounds.wordExcellent();
           setFoundFullWord(true);
           showMessage('EXCELLENT! Full word found!', 'success');
         } else {
+          sounds.wordValid();
           showMessage(`+${points} points!`, 'success');
         }
       } else {
+        sounds.wordInvalid();
         showMessage('Not a valid word!', 'error');
       }
     } catch (error) {
@@ -143,8 +160,10 @@ function App() {
     }
 
     if (foundFullWord) {
+      sounds.levelComplete();
       setGameState('roundEnd');
     } else {
+      sounds.gameOver();
       setGameState('gameOver');
     }
   }, [letters, foundFullWord]);
@@ -156,6 +175,13 @@ function App() {
     if (timeLeft <= 0) {
       endRound();
       return;
+    }
+
+    // Timer warning sounds
+    if (timeLeft <= 10 && timeLeft > 0) {
+      sounds.timerCritical();
+    } else if (timeLeft <= 30 && timeLeft > 0) {
+      sounds.timerTick();
     }
 
     const timer = setInterval(() => {
@@ -252,6 +278,9 @@ function App() {
     return (
       <div className="app">
         <div className="menu">
+          <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+            {soundEnabled ? '🔊' : '🔇'}
+          </button>
           <h1>Word Twist</h1>
           <p className="subtitle">Unscramble letters to find words!</p>
           <div className="menu-buttons">
@@ -333,6 +362,9 @@ function App() {
     <div className="app">
       <div className="game">
         <header className="game-header">
+          <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+            {soundEnabled ? '🔊' : '🔇'}
+          </button>
           <div className="stat">
             <span className="label">Level</span>
             <span className="value">{level}</span>
