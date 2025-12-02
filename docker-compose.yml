@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: ./backend
@@ -22,7 +20,10 @@ services:
       - backend
     networks:
       - app-network
+      - npm_network
 
 networks:
   app-network:
     driver: bridge
+  npm_network:
+    external: true
