@@ -190,9 +190,18 @@
   background: rgba(255, 100, 100, 0.3);
 }
 
+/* Game Layout with Sidebar */
+.game-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 1300px;
+  width: 100%;
+}
+
 /* Game Styles */
 .game {
-  width: 100%;
+  flex: 1;
   max-width: 1000px;
 }
 
@@ -457,6 +466,63 @@
   gap: 8px;
 }
 
+/* Leaderboard Sidebar */
+.leaderboard-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.leaderboard-sidebar h3 {
+  text-align: center;
+  color: #4a90d9;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.sidebar-leaderboard {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-leaderboard li {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  color: #c0c0c0;
+}
+
+.sidebar-leaderboard li:last-child {
+  border-bottom: none;
+}
+
+.sidebar-leaderboard li.current-user {
+  color: #4a90d9;
+  font-weight: 600;
+}
+
+.sidebar-leaderboard .rank {
+  width: 24px;
+  color: #808080;
+}
+
+.sidebar-leaderboard .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-leaderboard .score {
+  font-weight: 600;
+  margin-left: 8px;
+}
+
 /* Auth Form */
 .auth-form {
   text-align: center;
@@ -576,6 +642,12 @@
 }
 
 /* Responsive */
+@media (max-width: 900px) {
+  .leaderboard-sidebar {
+    display: none;
+  }
+}
+
 @media (max-width: 600px) {
   .menu h1 {
     font-size: 2.5rem;

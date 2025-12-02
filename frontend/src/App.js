@@ -124,6 +124,7 @@ function App() {
     setTimedMode(timed);
     setScore(0);
     setLevel(1);
+    await fetchLeaderboard();  // Fetch leaderboard when game starts
     await startNewRound(timed);
   };
 
@@ -572,70 +573,89 @@ function App() {
 
   return (
     <div className="app">
-      <div className="game">
-        <header className="game-header">
-          <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
-            {soundEnabled ? '🔊' : '🔇'}
-          </button>
-          <div className="stat">
-            <span className="label">Level</span>
-            <span className="value">{level}</span>
-          </div>
-          <div className="stat">
-            <span className="label">Score</span>
-            <span className="value">{score}</span>
-          </div>
-          <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
-            <span className="label">Time</span>
-            <span className="value">{formatTime(timeLeft)}</span>
-          </div>
-          <div className="stat">
-            <span className="label">Found</span>
-            <span className="value">{foundWords.length}/{totalWords}</span>
-          </div>
-        </header>
-
-        {message && (
-          <div className={`message ${messageType}`}>
-            {message}
-          </div>
-        )}
-
-        <div className="word-display">
-          {renderWordSlots()}
-        </div>
-
-        <div className="current-word">
-          <div className="word-box">
-            {currentWord || '\u00A0'}
-          </div>
-        </div>
-
-        <div className="letter-rack">
-          {letters.map((letter, index) => (
-            <button
-              key={index}
-              className={`letter-tile ${selectedIndices.includes(index) ? 'selected' : ''}`}
-              onClick={() => selectLetter(index)}
-              disabled={selectedIndices.includes(index)}
-            >
-              {letter}
+      <div className="game-layout">
+        <div className="game">
+          <header className="game-header">
+            <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+              {soundEnabled ? '🔊' : '🔇'}
             </button>
-          ))}
-        </div>
+            <div className="stat">
+              <span className="label">Level</span>
+              <span className="value">{level}</span>
+            </div>
+            <div className="stat">
+              <span className="label">Score</span>
+              <span className="value">{score}</span>
+            </div>
+            <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
+              <span className="label">Time</span>
+              <span className="value">{formatTime(timeLeft)}</span>
+            </div>
+            <div className="stat">
+              <span className="label">Found</span>
+              <span className="value">{foundWords.length}/{totalWords}</span>
+            </div>
+          </header>
 
-        <div className="controls">
-          <button className="btn" onClick={clearSelection}>Clear</button>
-          <button className="btn" onClick={shuffleLetters}>Shuffle</button>
-          <button className="btn primary" onClick={submitWord}>Submit</button>
-          <button className="btn danger" onClick={endRound}>Give Up</button>
-        </div>
+          {message && (
+            <div className={`message ${messageType}`}>
+              {message}
+            </div>
+          )}
 
-        {foundFullWord && (
-          <div className="next-level-hint">
-            Full word found! You can advance when time runs out.
+          <div className="word-display">
+            {renderWordSlots()}
           </div>
-        )}
+
+          <div className="current-word">
+            <div className="word-box">
+              {currentWord || '\u00A0'}
+            </div>
+          </div>
+
+          <div className="letter-rack">
+            {letters.map((letter, index) => (
+              <button
+                key={index}
+                className={`letter-tile ${selectedIndices.includes(index) ? 'selected' : ''}`}
+                onClick={() => selectLetter(index)}
+                disabled={selectedIndices.includes(index)}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+
+          <div className="controls">
+            <button className="btn" onClick={clearSelection}>Clear</button>
+            <button className="btn" onClick={shuffleLetters}>Shuffle</button>
+            <button className="btn primary" onClick={submitWord}>Submit</button>
+            <button className="btn danger" onClick={endRound}>Give Up</button>
+          </div>
+
+          {foundFullWord && (
+            <div className="next-level-hint">
+              Full word found! You can advance when time runs out.
+            </div>
+          )}
+        </div>
+
+        <aside className="leaderboard-sidebar">
+          <h3>Top 10</h3>
+          {leaderboard.length === 0 ? (
+            <p className="no-scores">No scores yet!</p>
+          ) : (
+            <ol className="sidebar-leaderboard">
+              {leaderboard.map((entry, idx) => (
+                <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                  <span className="rank">{idx + 1}.</span>
+                  <span className="name">{entry.username}</span>
+                  <span className="score">{entry.score}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </aside>
       </div>
     </div>
   );
