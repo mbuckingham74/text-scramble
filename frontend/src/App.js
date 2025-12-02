@@ -1,8 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import sounds from './sounds';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+
+// Safe localStorage helpers
+const safeGetJSON = (key) => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(key);
+    return null;
+  }
+};
+
+const safeGetString = (key) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+// API helper with proper error handling
+const apiFetch = async (url, options = {}) => {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Request failed: ${response.status}`);
+  }
+  return response.json();
+};
 
 function App() {
   const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard
@@ -18,24 +47,45 @@ function App() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [foundFullWord, setFoundFullWord] = useState(false);
-  const [allWords, setAllWords] = useState([]);
   const [timedMode, setTimedMode] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Auth state
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('wordtwist_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('wordtwist_token'));
+  const [user, setUser] = useState(() => safeGetJSON('wordtwist_user'));
+  const [token, setToken] = useState(() => safeGetString('wordtwist_token'));
   const [authError, setAuthError] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
 
-  const showMessage = (text, type = 'info') => {
+  // Refs for stable references in callbacks
+  const messageTimeoutRef = useRef(null);
+  const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, token: null });
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    gameStateRef.current = { score, level, foundWords, timedMode, user, token };
+  }, [score, level, foundWords, timedMode, user, token]);
+
+  const showMessage = useCallback((text, type = 'info') => {
+    // Clear any existing timeout
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+    }
     setMessage(text);
     setMessageType(type);
-    setTimeout(() => setMessage(''), 1500);
-  };
+    messageTimeoutRef.current = setTimeout(() => {
+      setMessage('');
+      messageTimeoutRef.current = null;
+    }, 1500);
+  }, []);
+
+  // Cleanup message timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     const enabled = sounds.toggle();
@@ -45,12 +95,11 @@ function App() {
   const handleLogin = async (username, password) => {
     setAuthError('');
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      const data = await apiFetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      const data = await response.json();
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
@@ -62,19 +111,18 @@ function App() {
         setAuthError(data.error || 'Login failed');
       }
     } catch (error) {
-      setAuthError('Login failed. Please try again.');
+      setAuthError(error.message || 'Login failed. Please try again.');
     }
   };
 
   const handleRegister = async (username, password) => {
     setAuthError('');
     try {
-      const response = await fetch(`${API_URL}/register`, {
+      const data = await apiFetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      const data = await response.json();
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
@@ -86,7 +134,7 @@ function App() {
         setAuthError(data.error || 'Registration failed');
       }
     } catch (error) {
-      setAuthError('Registration failed. Please try again.');
+      setAuthError(error.message || 'Registration failed. Please try again.');
     }
   };
 
@@ -97,25 +145,25 @@ function App() {
     localStorage.removeItem('wordtwist_token');
   };
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/leaderboard`);
-      const data = await response.json();
+      const data = await apiFetch(`${API_URL}/leaderboard`);
       setLeaderboard(data.leaderboard || []);
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
     }
-  };
+  }, []);
 
   // Fetch leaderboard on initial load
   useEffect(() => {
     fetchLeaderboard();
-  }, []);
+  }, [fetchLeaderboard]);
 
-  const submitScore = async () => {
+  const submitScore = useCallback(async () => {
+    const { score, level, foundWords, timedMode, user, token } = gameStateRef.current;
     if (!user || !token) return;
     try {
-      await fetch(`${API_URL}/scores`, {
+      await apiFetch(`${API_URL}/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,21 +179,11 @@ function App() {
     } catch (error) {
       console.error('Failed to submit score:', error);
     }
-  };
+  }, []);
 
-  const startGame = async (timed = true) => {
-    sounds.gameStart();
-    setTimedMode(timed);
-    setScore(0);
-    setLevel(1);
-    await fetchLeaderboard();  // Fetch leaderboard when game starts
-    await startNewRound(timed);
-  };
-
-  const startNewRound = async (timed = timedMode) => {
+  const startNewRound = useCallback(async (timed = timedMode) => {
     try {
-      const response = await fetch(`${API_URL}/puzzle`);
-      const data = await response.json();
+      const data = await apiFetch(`${API_URL}/puzzle`);
 
       setLetters(data.letters);
       setWordsByLength(data.wordsByLength);
@@ -154,48 +192,67 @@ function App() {
       setSelectedIndices([]);
       setCurrentWord('');
       setFoundFullWord(false);
-      setAllWords([]);
       setTimeLeft(timed ? 120 : -1);
       setGameState('playing');
     } catch (error) {
       console.error('Failed to fetch puzzle:', error);
       showMessage('Failed to load puzzle. Please try again.', 'error');
     }
-  };
+  }, [timedMode, showMessage]);
 
-  const shuffleLetters = () => {
+  const startGame = useCallback(async (timed = true) => {
+    sounds.gameStart();
+    setTimedMode(timed);
+    setScore(0);
+    setLevel(1);
+    await fetchLeaderboard();
+    await startNewRound(timed);
+  }, [fetchLeaderboard, startNewRound]);
+
+  const shuffleLetters = useCallback(() => {
     sounds.shuffle();
-    const shuffled = [...letters];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    setLetters(shuffled);
+    setLetters(prev => {
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
     setSelectedIndices([]);
     setCurrentWord('');
-  };
+  }, []);
 
-  const selectLetter = (index) => {
-    if (selectedIndices.includes(index)) return;
-    sounds.letterClick();
-    setSelectedIndices([...selectedIndices, index]);
-    setCurrentWord(currentWord + letters[index]);
-  };
+  const selectLetter = useCallback((index) => {
+    setSelectedIndices(prev => {
+      if (prev.includes(index)) return prev;
+      sounds.letterClick();
+      return [...prev, index];
+    });
+    setCurrentWord(prev => {
+      if (selectedIndices.includes(index)) return prev;
+      return prev + letters[index];
+    });
+  }, [letters, selectedIndices]);
 
-  const removeLetter = () => {
-    if (selectedIndices.length === 0) return;
-    sounds.letterRemove();
-    setSelectedIndices(selectedIndices.slice(0, -1));
-    setCurrentWord(currentWord.slice(0, -1));
-  };
+  const removeLetter = useCallback(() => {
+    setSelectedIndices(prev => {
+      if (prev.length === 0) return prev;
+      sounds.letterRemove();
+      return prev.slice(0, -1);
+    });
+    setCurrentWord(prev => prev.slice(0, -1));
+  }, []);
 
-  const clearSelection = () => {
-    if (selectedIndices.length > 0) sounds.clearLetters();
-    setSelectedIndices([]);
+  const clearSelection = useCallback(() => {
+    setSelectedIndices(prev => {
+      if (prev.length > 0) sounds.clearLetters();
+      return [];
+    });
     setCurrentWord('');
-  };
+  }, []);
 
-  const submitWord = async () => {
+  const submitWord = useCallback(async () => {
     if (currentWord.length < 3) {
       sounds.wordInvalid();
       showMessage('Words must be at least 3 letters!', 'error');
@@ -203,7 +260,8 @@ function App() {
       return;
     }
 
-    if (foundWords.includes(currentWord.toUpperCase())) {
+    const upperWord = currentWord.toUpperCase();
+    if (foundWords.includes(upperWord)) {
       sounds.wordDuplicate();
       showMessage('Already found!', 'error');
       clearSelection();
@@ -211,21 +269,21 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/validate`, {
+      const data = await apiFetch(`${API_URL}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ word: currentWord, letters })
       });
-      const data = await response.json();
 
       if (data.valid) {
-        setFoundWords([...foundWords, data.word]);
+        const word = data.word.toUpperCase(); // Ensure consistent casing
+        setFoundWords(prev => [...prev, word]);
 
         // Calculate points: longer words = more points
-        const points = data.word.length * 10 + (data.word.length - 3) * 5;
-        setScore(score + points);
+        const points = word.length * 10 + (word.length - 3) * 5;
+        setScore(prev => prev + points);
 
-        if (data.word.length === 6) {
+        if (word.length === 6) {
           sounds.wordExcellent();
           setFoundFullWord(true);
           showMessage('EXCELLENT! Full word found!', 'success');
@@ -239,35 +297,23 @@ function App() {
       }
     } catch (error) {
       console.error('Validation error:', error);
+      showMessage('Error validating word', 'error');
     }
 
     clearSelection();
-  };
+  }, [currentWord, foundWords, letters, showMessage, clearSelection]);
 
   const endRound = useCallback(async () => {
-    // Fetch all solutions
-    try {
-      const response = await fetch(`${API_URL}/solutions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ letters: letters.join('') })
-      });
-      const data = await response.json();
-      setAllWords(data.words);
-    } catch (error) {
-      console.error('Failed to fetch solutions:', error);
-    }
-
     if (foundFullWord) {
       sounds.levelComplete();
       setGameState('roundEnd');
     } else {
       sounds.gameOver();
       await submitScore();
-      await fetchLeaderboard();  // Always fetch so View Leaderboard works
+      await fetchLeaderboard();
       setGameState('gameOver');
     }
-  }, [letters, foundFullWord]);
+  }, [foundFullWord, submitScore, fetchLeaderboard]);
 
   // Timer effect
   useEffect(() => {
@@ -320,7 +366,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  });
+  }, [gameState, letters, selectedIndices, submitWord, removeLetter, shuffleLetters, clearSelection, selectLetter]);
 
   const formatTime = (seconds) => {
     if (seconds === -1) return '∞';
@@ -340,14 +386,18 @@ function App() {
         <div key={length} className="word-group">
           <h3>{length} Letters</h3>
           <div className="word-slots">
-            {words.map((word, idx) => (
-              <div
-                key={idx}
-                className={`word-slot ${foundWords.includes(word) ? 'found' : ''}`}
-              >
-                {foundWords.includes(word) ? word : word.replace(/./g, '_')}
-              </div>
-            ))}
+            {words.map((word, idx) => {
+              const upperWord = word.toUpperCase();
+              const isFound = foundWords.includes(upperWord);
+              return (
+                <div
+                  key={idx}
+                  className={`word-slot ${isFound ? 'found' : ''}`}
+                >
+                  {isFound ? upperWord : word.replace(/./g, '_')}
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -362,14 +412,18 @@ function App() {
       <div key={length} className="word-group">
         <h3>{length} Letters</h3>
         <div className="word-slots">
-          {wordsByLength[length].map((word, idx) => (
-            <div
-              key={idx}
-              className={`word-slot ${foundWords.includes(word) ? 'found' : 'missed'}`}
-            >
-              {word}
-            </div>
-          ))}
+          {wordsByLength[length].map((word, idx) => {
+            const upperWord = word.toUpperCase();
+            const isFound = foundWords.includes(upperWord);
+            return (
+              <div
+                key={idx}
+                className={`word-slot ${isFound ? 'found' : 'missed'}`}
+              >
+                {upperWord}
+              </div>
+            );
+          })}
         </div>
       </div>
     ));

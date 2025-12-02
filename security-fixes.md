@@ -97,6 +97,14 @@ The following environment variables are now used:
 - Stores JWT token in `localStorage` as `wordtwist_token`
 - Sends `Authorization: Bearer <token>` header with score submissions
 - Clears token on logout
+- Safe localStorage parsing with try/catch to handle malformed data
+- Proper API error handling with `response.ok` checks
+- Fixed stale closure in `endRound` using refs for current game state
+- Fixed duplicate word detection casing (always uppercase)
+- Removed unused `/solutions` API call
+- Fixed `showMessage` timeout cleanup on unmount
+- Added proper dependency array to keyboard listener effect
+- Dockerfile now uses `package-lock.json` with `npm ci` for reproducible builds
 
 ## Deployment Notes
 
