@@ -2,9 +2,8 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 15px;
-  padding-top: 20px;
+  align-items: center;
+  padding: 20px;
 }
 
 /* Sound Toggle */
@@ -171,7 +170,7 @@
 }
 
 .stat .value {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #fff;
 }
@@ -239,10 +238,10 @@
 
 .word-slot {
   background: rgba(255, 255, 255, 0.05);
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   letter-spacing: 1px;
   color: #606060;
 }
@@ -260,11 +259,11 @@
 
 .word-box {
   display: inline-block;
-  min-width: 180px;
-  padding: 10px 24px;
+  min-width: 200px;
+  padding: 12px 28px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -279,9 +278,9 @@
 }
 
 .letter-tile {
-  width: 50px;
-  height: 50px;
-  font-size: 1.5rem;
+  width: 55px;
+  height: 55px;
+  font-size: 1.6rem;
   font-weight: 700;
   border: none;
   border-radius: 8px;
@@ -406,14 +405,14 @@
   }
 
   .letter-tile {
-    width: 45px;
-    height: 45px;
+    width: 48px;
+    height: 48px;
     font-size: 1.4rem;
   }
 
   .word-box {
-    font-size: 1.5rem;
-    padding: 10px 20px;
+    font-size: 1.6rem;
+    padding: 10px 22px;
   }
 
   .game-header {
