@@ -5,7 +5,7 @@ import sounds from './sounds';
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
 function App() {
-  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver
+  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard
   const [letters, setLetters] = useState([]);
   const [selectedIndices, setSelectedIndices] = useState([]);
   const [currentWord, setCurrentWord] = useState('');
@@ -22,6 +22,14 @@ function App() {
   const [timedMode, setTimedMode] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // Auth state
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('wordtwist_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [authError, setAuthError] = useState('');
+  const [leaderboard, setLeaderboard] = useState([]);
+
   const showMessage = (text, type = 'info') => {
     setMessage(text);
     setMessageType(type);
@@ -31,6 +39,84 @@ function App() {
   const toggleSound = () => {
     const enabled = sounds.toggle();
     setSoundEnabled(enabled);
+  };
+
+  const handleLogin = async (username, password) => {
+    setAuthError('');
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (data.success) {
+        const userData = { userId: data.userId, username: data.username };
+        setUser(userData);
+        localStorage.setItem('wordtwist_user', JSON.stringify(userData));
+        setGameState('menu');
+      } else {
+        setAuthError(data.error || 'Login failed');
+      }
+    } catch (error) {
+      setAuthError('Login failed. Please try again.');
+    }
+  };
+
+  const handleRegister = async (username, password) => {
+    setAuthError('');
+    try {
+      const response = await fetch(`${API_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (data.success) {
+        const userData = { userId: data.userId, username: data.username };
+        setUser(userData);
+        localStorage.setItem('wordtwist_user', JSON.stringify(userData));
+        setGameState('menu');
+      } else {
+        setAuthError(data.error || 'Registration failed');
+      }
+    } catch (error) {
+      setAuthError('Registration failed. Please try again.');
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('wordtwist_user');
+  };
+
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await fetch(`${API_URL}/leaderboard`);
+      const data = await response.json();
+      setLeaderboard(data.leaderboard || []);
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+    }
+  };
+
+  const submitScore = async () => {
+    if (!user) return;
+    try {
+      await fetch(`${API_URL}/scores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.userId,
+          score,
+          level,
+          wordsFound: foundWords.length,
+          gameMode: timedMode ? 'timed' : 'untimed'
+        })
+      });
+    } catch (error) {
+      console.error('Failed to submit score:', error);
+    }
   };
 
   const startGame = async (timed = true) => {
@@ -162,6 +248,7 @@ function App() {
       setGameState('roundEnd');
     } else {
       sounds.gameOver();
+      submitScore();
       setGameState('gameOver');
     }
   }, [letters, foundFullWord]);
@@ -272,6 +359,96 @@ function App() {
     ));
   };
 
+  // Login screen
+  if (gameState === 'login') {
+    return (
+      <div className="app">
+        <div className="auth-form">
+          <h1>Login</h1>
+          {authError && <p className="auth-error">{authError}</p>}
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target;
+            handleLogin(form.username.value, form.password.value);
+          }}>
+            <input type="text" name="username" placeholder="Username" required />
+            <input type="password" name="password" placeholder="Password" required />
+            <button type="submit" className="btn primary">Login</button>
+          </form>
+          <p className="auth-switch">
+            Don't have an account?{' '}
+            <button className="link-btn" onClick={() => { setAuthError(''); setGameState('register'); }}>Register</button>
+          </p>
+          <button className="btn secondary" onClick={() => setGameState('menu')}>Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Register screen
+  if (gameState === 'register') {
+    return (
+      <div className="app">
+        <div className="auth-form">
+          <h1>Register</h1>
+          {authError && <p className="auth-error">{authError}</p>}
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target;
+            handleRegister(form.username.value, form.password.value);
+          }}>
+            <input type="text" name="username" placeholder="Username (3-20 chars)" required />
+            <input type="password" name="password" placeholder="Password (4+ chars)" required />
+            <button type="submit" className="btn primary">Register</button>
+          </form>
+          <p className="auth-switch">
+            Already have an account?{' '}
+            <button className="link-btn" onClick={() => { setAuthError(''); setGameState('login'); }}>Login</button>
+          </p>
+          <button className="btn secondary" onClick={() => setGameState('menu')}>Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Leaderboard screen
+  if (gameState === 'leaderboard') {
+    return (
+      <div className="app">
+        <div className="leaderboard-screen">
+          <h1>Leaderboard</h1>
+          <div className="leaderboard-list">
+            {leaderboard.length === 0 ? (
+              <p className="no-scores">No scores yet. Be the first!</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Player</th>
+                    <th>Score</th>
+                    <th>Level</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((entry, idx) => (
+                    <tr key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                      <td>{idx + 1}</td>
+                      <td>{entry.username}</td>
+                      <td>{entry.score}</td>
+                      <td>{entry.level}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <button className="btn primary" onClick={() => setGameState('menu')}>Back to Menu</button>
+        </div>
+      </div>
+    );
+  }
+
   if (gameState === 'menu') {
     return (
       <div className="app">
@@ -281,6 +458,19 @@ function App() {
           </button>
           <h1>Word Twist</h1>
           <p className="subtitle">Unscramble letters to find words!</p>
+
+          {user ? (
+            <div className="user-info">
+              <span>Welcome, <strong>{user.username}</strong>!</span>
+              <button className="link-btn" onClick={handleLogout}>Logout</button>
+            </div>
+          ) : (
+            <div className="auth-buttons">
+              <button className="btn secondary" onClick={() => setGameState('login')}>Login</button>
+              <button className="btn secondary" onClick={() => setGameState('register')}>Register</button>
+            </div>
+          )}
+
           <div className="menu-buttons">
             <button className="btn primary" onClick={() => startGame(true)}>
               Timed Mode
@@ -289,6 +479,11 @@ function App() {
               Untimed Mode
             </button>
           </div>
+
+          <button className="btn leaderboard-btn" onClick={() => { fetchLeaderboard(); setGameState('leaderboard'); }}>
+            View Leaderboard
+          </button>
+
           <div className="instructions">
             <h3>How to Play</h3>
             <ul>
@@ -298,6 +493,7 @@ function App() {
               <li>Press <kbd>Backspace</kbd> to delete</li>
               <li>Press <kbd>Tab</kbd> to clear</li>
               <li>Find a 6-letter word to advance!</li>
+              {!user && <li><em>Login to save your scores!</em></li>}
             </ul>
           </div>
         </div>

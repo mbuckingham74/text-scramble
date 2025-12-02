@@ -7,8 +7,15 @@ services:
       - "3001"
     environment:
       - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_USER=wordtwist
+      - DB_PASSWORD=wordtwist_secret
+      - DB_NAME=wordtwist
+    depends_on:
+      - mysql
     networks:
       - app-network
+      - mysql_network
 
   frontend:
     build: ./frontend
@@ -22,8 +29,28 @@ services:
       - app-network
       - npm_network
 
+  mysql:
+    image: mysql:8
+    container_name: word-twist-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_secret
+      - MYSQL_DATABASE=wordtwist
+      - MYSQL_USER=wordtwist
+      - MYSQL_PASSWORD=wordtwist_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mysql_network
+
 networks:
   app-network:
     driver: bridge
   npm_network:
     external: true
+  mysql_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
