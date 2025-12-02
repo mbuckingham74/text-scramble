@@ -100,6 +100,11 @@ function App() {
     }
   };
 
+  // Fetch leaderboard on initial load
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
   const submitScore = async () => {
     if (!user) return;
     try {
@@ -454,49 +459,64 @@ function App() {
   if (gameState === 'menu') {
     return (
       <div className="app">
-        <div className="menu">
-          <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
-            {soundEnabled ? '🔊' : '🔇'}
-          </button>
-          <h1>Word Twist</h1>
-          <p className="subtitle">Unscramble letters to find words!</p>
-
-          {user ? (
-            <div className="user-info">
-              <span>Welcome, <strong>{user.username}</strong>!</span>
-              <button className="link-btn" onClick={handleLogout}>Logout</button>
-            </div>
-          ) : (
-            <div className="auth-buttons">
-              <button className="btn secondary" onClick={() => setGameState('login')}>Login</button>
-              <button className="btn secondary" onClick={() => setGameState('register')}>Register</button>
-            </div>
-          )}
-
-          <div className="menu-buttons">
-            <button className="btn primary" onClick={() => startGame(true)}>
-              Timed Mode
+        <div className="menu-layout">
+          <div className="menu">
+            <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+              {soundEnabled ? '🔊' : '🔇'}
             </button>
-            <button className="btn secondary" onClick={() => startGame(false)}>
-              Untimed Mode
-            </button>
+            <h1>Word Twist</h1>
+            <p className="subtitle">Unscramble letters to find words!</p>
+
+            {user ? (
+              <div className="user-info">
+                <span>Welcome, <strong>{user.username}</strong>!</span>
+                <button className="link-btn" onClick={handleLogout}>Logout</button>
+              </div>
+            ) : (
+              <div className="auth-buttons">
+                <button className="btn secondary" onClick={() => setGameState('login')}>Login</button>
+                <button className="btn secondary" onClick={() => setGameState('register')}>Register</button>
+              </div>
+            )}
+
+            <div className="menu-buttons">
+              <button className="btn primary" onClick={() => startGame(true)}>
+                Timed Mode
+              </button>
+              <button className="btn secondary" onClick={() => startGame(false)}>
+                Untimed Mode
+              </button>
+            </div>
+
+            <div className="instructions">
+              <h3>How to Play</h3>
+              <ul>
+                <li>Click letters or type to form words</li>
+                <li>Press <kbd>Enter</kbd> to submit</li>
+                <li>Press <kbd>Space</kbd> to shuffle</li>
+                <li>Press <kbd>Backspace</kbd> to delete</li>
+                <li>Press <kbd>Tab</kbd> to clear</li>
+                <li>Find a 6-letter word to advance!</li>
+                {!user && <li><em>Login to save your scores!</em></li>}
+              </ul>
+            </div>
           </div>
 
-          <button className="btn leaderboard-btn" onClick={() => { fetchLeaderboard(); setGameState('leaderboard'); }}>
-            View Leaderboard
-          </button>
-
-          <div className="instructions">
-            <h3>How to Play</h3>
-            <ul>
-              <li>Click letters or type to form words</li>
-              <li>Press <kbd>Enter</kbd> to submit</li>
-              <li>Press <kbd>Space</kbd> to shuffle</li>
-              <li>Press <kbd>Backspace</kbd> to delete</li>
-              <li>Press <kbd>Tab</kbd> to clear</li>
-              <li>Find a 6-letter word to advance!</li>
-              {!user && <li><em>Login to save your scores!</em></li>}
-            </ul>
+          <div className="menu-leaderboard">
+            <h2>Top 10</h2>
+            {leaderboard.length === 0 ? (
+              <p className="no-scores">No scores yet. Be the first!</p>
+            ) : (
+              <ol className="menu-leaderboard-list">
+                {leaderboard.map((entry, idx) => (
+                  <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                    <span className="rank">{idx + 1}.</span>
+                    <span className="name">{entry.username}</span>
+                    <span className="score">{entry.score}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         </div>
       </div>

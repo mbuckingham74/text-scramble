@@ -42,11 +42,21 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Menu Layout with Leaderboard */
+.menu-layout {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  max-width: 900px;
+  width: 100%;
+}
+
 /* Menu Styles */
 .menu {
   text-align: center;
   max-width: 500px;
   position: relative;
+  flex: 1;
 }
 
 .menu h1 {
@@ -107,15 +117,63 @@
   color: #6bb3f0;
 }
 
-.leaderboard-btn {
-  margin-bottom: 20px;
-  background: rgba(74, 144, 217, 0.2);
-  color: #4a90d9;
-  border: 2px solid rgba(74, 144, 217, 0.3);
+/* Menu Leaderboard */
+.menu-leaderboard {
+  width: 250px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  padding: 20px;
 }
 
-.leaderboard-btn:hover {
-  background: rgba(74, 144, 217, 0.3);
+.menu-leaderboard h2 {
+  text-align: center;
+  color: #4a90d9;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+}
+
+.menu-leaderboard-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-leaderboard-list li {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1rem;
+  color: #c0c0c0;
+}
+
+.menu-leaderboard-list li:last-child {
+  border-bottom: none;
+}
+
+.menu-leaderboard-list li.current-user {
+  color: #4a90d9;
+  font-weight: 600;
+}
+
+.menu-leaderboard-list .rank {
+  width: 30px;
+  color: #808080;
+  font-weight: 600;
+}
+
+.menu-leaderboard-list .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-leaderboard-list .score {
+  font-weight: 700;
+  color: #4a90d9;
+  margin-left: 10px;
 }
 
 .instructions {
@@ -645,6 +703,16 @@
 @media (max-width: 900px) {
   .leaderboard-sidebar {
     display: none;
+  }
+
+  .menu-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .menu-leaderboard {
+    width: 100%;
+    max-width: 400px;
   }
 }
 
