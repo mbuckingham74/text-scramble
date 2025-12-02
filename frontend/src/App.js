@@ -513,6 +513,7 @@ function App() {
                     <span className="rank">{idx + 1}.</span>
                     <span className="name">{entry.username}</span>
                     <span className="score">{entry.score}</span>
+                    <span className="date">{new Date(entry.created_at).toLocaleDateString()}</span>
                   </li>
                 ))}
               </ol>
@@ -671,6 +672,7 @@ function App() {
                   <span className="rank">{idx + 1}.</span>
                   <span className="name">{entry.username}</span>
                   <span className="score">{entry.score}</span>
+                  <span className="date">{new Date(entry.created_at).toLocaleDateString()}</span>
                 </li>
               ))}
             </ol>
