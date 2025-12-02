@@ -435,6 +435,7 @@ function App() {
                     <th>Player</th>
                     <th>Score</th>
                     <th>Level</th>
+                    <th>Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -444,6 +445,7 @@ function App() {
                       <td>{entry.username}</td>
                       <td>{entry.score}</td>
                       <td>{entry.level}</td>
+                      <td>{new Date(entry.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
