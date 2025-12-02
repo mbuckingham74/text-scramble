@@ -340,20 +340,20 @@ function App() {
     return slots;
   };
 
-  // Render end screen word list
+  // Render end screen word list (shows all words in slots with found/missed styling)
   const renderAllWords = () => {
     const lengths = Object.keys(wordsByLength).sort((a, b) => a - b);
     return lengths.map(length => (
       <div key={length} className="word-group">
         <h3>{length} Letters</h3>
-        <div className="word-list">
+        <div className="word-slots">
           {wordsByLength[length].map((word, idx) => (
-            <span
+            <div
               key={idx}
-              className={`word-item ${foundWords.includes(word) ? 'found' : 'missed'}`}
+              className={`word-slot ${foundWords.includes(word) ? 'found' : 'missed'}`}
             >
               {word}
-            </span>
+            </div>
           ))}
         </div>
       </div>

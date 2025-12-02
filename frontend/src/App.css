@@ -298,6 +298,11 @@
   color: #2ed573;
 }
 
+.word-slot.missed {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+}
+
 /* Current Word */
 .current-word {
   text-align: center;
@@ -450,23 +455,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.word-item {
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-family: monospace;
-  font-size: 0.9rem;
-}
-
-.word-item.found {
-  background: rgba(46, 213, 115, 0.2);
-  color: #2ed573;
-}
-
-.word-item.missed {
-  background: rgba(255, 71, 87, 0.2);
-  color: #ff4757;
 }
 
 /* Auth Form */
