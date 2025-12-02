@@ -11,6 +11,7 @@ services:
       - DB_USER=wordtwist
       - DB_PASSWORD=wordtwist_secret
       - DB_NAME=wordtwist
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production-use-a-long-random-string}
     depends_on:
       - mysql
     networks:

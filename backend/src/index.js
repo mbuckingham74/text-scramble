@@ -1,14 +1,57 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
 const { generatePuzzle, validateWord, getAllValidWords } = require('./game');
 const db = require('./db');
+const { generateToken, authMiddleware } = require('./auth');
+const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
-app.use(express.json());
+// CORS - restrict to known origins
+const allowedOrigins = [
+  'https://twist.tachyonfuture.com',
+  'http://localhost:3000',
+  'http://localhost:3001'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.) in dev only
+    if (!origin && process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10kb' }));
+
+// Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { error: 'Too many attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// General rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(generalLimiter);
 
 // Generate a new puzzle
 app.get('/api/puzzle', (req, res) => {
@@ -17,44 +60,22 @@ app.get('/api/puzzle', (req, res) => {
 });
 
 // Validate a word submission
-app.post('/api/validate', (req, res) => {
-  const { word, letters } = req.body;
-
-  if (!word || !letters) {
-    return res.status(400).json({ error: 'Missing word or letters' });
-  }
-
+app.post('/api/validate', validate(validateWordSchema), (req, res) => {
+  const { word, letters } = req.validated;
   const isValid = validateWord(word, letters);
   res.json({ valid: isValid, word: word.toUpperCase() });
 });
 
 // Get all valid words for a set of letters (for end of round reveal)
-app.post('/api/solutions', (req, res) => {
-  const { letters } = req.body;
-
-  if (!letters) {
-    return res.status(400).json({ error: 'Missing letters' });
-  }
-
+app.post('/api/solutions', validate(solutionsSchema), (req, res) => {
+  const { letters } = req.validated;
   const words = getAllValidWords(letters);
   res.json({ words });
 });
 
 // Register a new user
-app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
-
-  if (username.length < 3 || username.length > 20) {
-    return res.status(400).json({ error: 'Username must be 3-20 characters' });
-  }
-
-  if (password.length < 4) {
-    return res.status(400).json({ error: 'Password must be at least 4 characters' });
-  }
+app.post('/api/register', authLimiter, validate(registerSchema), async (req, res) => {
+  const { username, password } = req.validated;
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
@@ -62,7 +83,8 @@ app.post('/api/register', async (req, res) => {
       'INSERT INTO users (username, password_hash) VALUES (?, ?)',
       [username, passwordHash]
     );
-    res.json({ success: true, userId: result.insertId, username });
+    const token = generateToken(result.insertId, username);
+    res.json({ success: true, userId: result.insertId, username, token });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Username already taken' });
@@ -73,12 +95,8 @@ app.post('/api/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
+app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
+  const { username, password } = req.validated;
 
   try {
     const [rows] = await db.execute(
@@ -97,25 +115,23 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    res.json({ success: true, userId: user.id, username: user.username });
+    const token = generateToken(user.id, user.username);
+    res.json({ success: true, userId: user.id, username: user.username, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Submit a score
-app.post('/api/scores', async (req, res) => {
-  const { userId, score, level, wordsFound, gameMode } = req.body;
-
-  if (!userId || score === undefined || !level || wordsFound === undefined) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+// Submit a score (requires auth)
+app.post('/api/scores', authMiddleware, validate(scoreSchema), async (req, res) => {
+  const { score, level, wordsFound, gameMode } = req.validated;
+  const userId = req.user.userId; // From JWT token, not request body
 
   try {
     const [result] = await db.execute(
       'INSERT INTO scores (user_id, score, level, words_found, game_mode) VALUES (?, ?, ?, ?, ?)',
-      [userId, score, level, wordsFound, gameMode || 'timed']
+      [userId, score, level, wordsFound, gameMode]
     );
     res.json({ success: true, scoreId: result.insertId });
   } catch (error) {
@@ -124,7 +140,7 @@ app.post('/api/scores', async (req, res) => {
   }
 });
 
-// Get leaderboard (top 10 scores)
+// Get leaderboard (top 10 scores) - public
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const [rows] = await db.execute(`
@@ -141,9 +157,9 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// Get user's best scores
-app.get('/api/scores/:userId', async (req, res) => {
-  const { userId } = req.params;
+// Get current user's best scores (requires auth)
+app.get('/api/scores/me', authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
 
   try {
     const [rows] = await db.execute(`

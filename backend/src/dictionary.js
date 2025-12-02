@@ -10,6 +10,8 @@ const wordList = fs.readFileSync(wordsPath, 'utf-8')
 
 const dictionary = new Set(wordList);
 
-console.log(`Dictionary loaded: ${dictionary.size} words`);
+if (process.env.NODE_ENV !== 'production') {
+  console.log(`Dictionary loaded: ${dictionary.size} words`);
+}
 
 module.exports = dictionary;

@@ -27,6 +27,7 @@ function App() {
     const saved = localStorage.getItem('wordtwist_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [token, setToken] = useState(() => localStorage.getItem('wordtwist_token'));
   const [authError, setAuthError] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
 
@@ -53,7 +54,9 @@ function App() {
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
+        setToken(data.token);
         localStorage.setItem('wordtwist_user', JSON.stringify(userData));
+        localStorage.setItem('wordtwist_token', data.token);
         setGameState('menu');
       } else {
         setAuthError(data.error || 'Login failed');
@@ -75,7 +78,9 @@ function App() {
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
+        setToken(data.token);
         localStorage.setItem('wordtwist_user', JSON.stringify(userData));
+        localStorage.setItem('wordtwist_token', data.token);
         setGameState('menu');
       } else {
         setAuthError(data.error || 'Registration failed');
@@ -87,7 +92,9 @@ function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('wordtwist_user');
+    localStorage.removeItem('wordtwist_token');
   };
 
   const fetchLeaderboard = async () => {
@@ -106,13 +113,15 @@ function App() {
   }, []);
 
   const submitScore = async () => {
-    if (!user) return;
+    if (!user || !token) return;
     try {
       await fetch(`${API_URL}/scores`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          userId: user.userId,
           score,
           level,
           wordsFound: foundWords.length,
