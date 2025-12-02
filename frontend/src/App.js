@@ -9,7 +9,7 @@ function App() {
   const [letters, setLetters] = useState([]);
   const [selectedIndices, setSelectedIndices] = useState([]);
   const [currentWord, setCurrentWord] = useState('');
-  const [foundWords, setFoundWords] = useState(new Set());
+  const [foundWords, setFoundWords] = useState([]);
   const [wordsByLength, setWordsByLength] = useState({});
   const [totalWords, setTotalWords] = useState(0);
   const [score, setScore] = useState(0);
@@ -49,7 +49,7 @@ function App() {
       setLetters(data.letters);
       setWordsByLength(data.wordsByLength);
       setTotalWords(data.totalWords);
-      setFoundWords(new Set());
+      setFoundWords([]);
       setSelectedIndices([]);
       setCurrentWord('');
       setFoundFullWord(false);
@@ -102,7 +102,7 @@ function App() {
       return;
     }
 
-    if (foundWords.has(currentWord.toUpperCase())) {
+    if (foundWords.includes(currentWord.toUpperCase())) {
       sounds.wordDuplicate();
       showMessage('Already found!', 'error');
       clearSelection();
@@ -118,9 +118,7 @@ function App() {
       const data = await response.json();
 
       if (data.valid) {
-        const newFoundWords = new Set(foundWords);
-        newFoundWords.add(data.word);
-        setFoundWords(newFoundWords);
+        setFoundWords([...foundWords, data.word]);
 
         // Calculate points: longer words = more points
         const points = data.word.length * 10 + (data.word.length - 3) * 5;
@@ -242,9 +240,9 @@ function App() {
             {words.map((word, idx) => (
               <div
                 key={idx}
-                className={`word-slot ${foundWords.has(word) ? 'found' : ''}`}
+                className={`word-slot ${foundWords.includes(word) ? 'found' : ''}`}
               >
-                {foundWords.has(word) ? word : word.replace(/./g, '_')}
+                {foundWords.includes(word) ? word : word.replace(/./g, '_')}
               </div>
             ))}
           </div>
@@ -264,7 +262,7 @@ function App() {
           {wordsByLength[length].map((word, idx) => (
             <span
               key={idx}
-              className={`word-item ${foundWords.has(word) ? 'found' : 'missed'}`}
+              className={`word-item ${foundWords.includes(word) ? 'found' : 'missed'}`}
             >
               {word}
             </span>
@@ -313,7 +311,7 @@ function App() {
         <div className="round-end">
           <h1>Round Complete!</h1>
           <div className="stats">
-            <p>Words Found: {foundWords.size} / {totalWords}</p>
+            <p>Words Found: {foundWords.length} / {totalWords}</p>
             <p>Score: {score}</p>
             <p>Level: {level}</p>
           </div>
@@ -344,7 +342,7 @@ function App() {
           <div className="stats">
             <p>Final Score: {score}</p>
             <p>Levels Completed: {level - 1}</p>
-            <p>Words Found This Round: {foundWords.size} / {totalWords}</p>
+            <p>Words Found This Round: {foundWords.length} / {totalWords}</p>
           </div>
           <div className="all-words">
             <h2>All Words</h2>
@@ -379,7 +377,7 @@ function App() {
           </div>
           <div className="stat">
             <span className="label">Found</span>
-            <span className="value">{foundWords.size}/{totalWords}</span>
+            <span className="value">{foundWords.length}/{totalWords}</span>
           </div>
         </header>
 
