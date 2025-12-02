@@ -2,8 +2,9 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 20px;
+  align-items: flex-start;
+  padding: 15px;
+  padding-top: 20px;
 }
 
 /* Sound Toggle */
@@ -153,9 +154,9 @@
   display: flex;
   justify-content: space-around;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  padding: 15px;
-  margin-bottom: 20px;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
 }
 
 .stat {
@@ -170,7 +171,7 @@
 }
 
 .stat .value {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #fff;
 }
@@ -188,9 +189,9 @@
 /* Message */
 .message {
   text-align: center;
-  padding: 10px 20px;
-  border-radius: 10px;
-  margin-bottom: 15px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
   font-weight: 600;
   animation: slideIn 0.3s ease;
 }
@@ -213,36 +214,36 @@
 /* Word Display */
 .word-display {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  padding: 20px;
-  margin-bottom: 20px;
-  max-height: 350px;
-  overflow-y: auto;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .word-group {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 .word-group h3 {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #e94560;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .word-slots {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 5px;
 }
 
 .word-slot {
   background: rgba(255, 255, 255, 0.05);
-  padding: 5px 12px;
-  border-radius: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
   font-family: monospace;
-  font-size: 0.9rem;
-  letter-spacing: 2px;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
   color: #606060;
 }
 
@@ -254,18 +255,18 @@
 /* Current Word */
 .current-word {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .word-box {
   display: inline-block;
-  min-width: 200px;
-  padding: 15px 30px;
+  min-width: 180px;
+  padding: 10px 24px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  font-size: 2rem;
+  border-radius: 8px;
+  font-size: 1.6rem;
   font-weight: 700;
-  letter-spacing: 5px;
+  letter-spacing: 4px;
   text-transform: uppercase;
 }
 
@@ -273,23 +274,23 @@
 .letter-rack {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .letter-tile {
-  width: 60px;
-  height: 60px;
-  font-size: 1.8rem;
+  width: 50px;
+  height: 50px;
+  font-size: 1.5rem;
   font-weight: 700;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   background: linear-gradient(145deg, #4a4a6a, #3a3a5a);
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: 'Fredoka One', cursive;
-  box-shadow: 0 4px 0 #2a2a4a, 0 6px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 0 #2a2a4a, 0 5px 8px rgba(0, 0, 0, 0.3);
 }
 
 .letter-tile:hover:not(:disabled) {
