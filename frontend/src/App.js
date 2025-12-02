@@ -249,7 +249,7 @@ function App() {
     } else {
       sounds.gameOver();
       await submitScore();
-      await fetchLeaderboard();
+      await fetchLeaderboard();  // Always fetch so View Leaderboard works
       setGameState('gameOver');
     }
   }, [letters, foundFullWord]);
