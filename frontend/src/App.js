@@ -248,7 +248,8 @@ function App() {
       setGameState('roundEnd');
     } else {
       sounds.gameOver();
-      submitScore();
+      await submitScore();
+      await fetchLeaderboard();
       setGameState('gameOver');
     }
   }, [letters, foundFullWord]);
@@ -530,6 +531,9 @@ function App() {
   }
 
   if (gameState === 'gameOver') {
+    const userRank = user ? leaderboard.findIndex(entry => entry.username === user.username && entry.score === score) + 1 : 0;
+    const isOnLeaderboard = userRank > 0 && userRank <= 10;
+
     return (
       <div className="app">
         <div className="game-over">
@@ -539,14 +543,28 @@ function App() {
             <p>Final Score: {score}</p>
             <p>Levels Completed: {level - 1}</p>
             <p>Words Found This Round: {foundWords.length} / {totalWords}</p>
+            {user && isOnLeaderboard && (
+              <p className="leaderboard-rank">You made the leaderboard at #{userRank}!</p>
+            )}
+            {user && !isOnLeaderboard && score > 0 && (
+              <p className="leaderboard-miss">Score submitted! Keep playing to reach the top 10.</p>
+            )}
+            {!user && (
+              <p className="login-prompt">Login to save your scores to the leaderboard!</p>
+            )}
           </div>
           <div className="all-words">
             <h2>All Words</h2>
             {renderAllWords()}
           </div>
-          <button className="btn primary" onClick={() => setGameState('menu')}>
-            Play Again
-          </button>
+          <div className="game-over-buttons">
+            <button className="btn primary" onClick={() => setGameState('menu')}>
+              Play Again
+            </button>
+            <button className="btn leaderboard-btn" onClick={() => setGameState('leaderboard')}>
+              View Leaderboard
+            </button>
+          </div>
         </div>
       </div>
     );

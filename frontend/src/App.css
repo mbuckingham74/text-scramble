@@ -408,6 +408,28 @@
   margin: 10px 0;
 }
 
+.stats .leaderboard-rank {
+  color: #2ed573;
+  font-weight: 600;
+}
+
+.stats .leaderboard-miss {
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+.stats .login-prompt {
+  color: #4a90d9;
+  font-style: italic;
+}
+
+.game-over-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .all-words {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 15px;
