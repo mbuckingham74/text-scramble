@@ -1,22 +1,52 @@
 const dictionary = require('./dictionary');
 
-// 6-letter words that have many sub-words (good for puzzles)
-const puzzleWords = [
+// Puzzle words organized by length for progressive difficulty
+// 6-letter words (levels 1-5)
+const puzzleWords6 = [
   'ALMOST', 'BASKET', 'CASTLE', 'DANGER', 'EAGLES', 'FABRIC', 'GARDEN', 'HANDLE',
   'ISLAND', 'JANGLE', 'KISMET', 'LAMENT', 'MANGLE', 'NACHOS', 'OBTUSE', 'PALACE',
   'QUARTS', 'RAISIN', 'SAILOR', 'TABLES', 'UNSAFE', 'VALISE', 'WALNUT', 'YANKED',
   'ZEALOT', 'BRANCH', 'CLAMPS', 'DREAMS', 'ELFINS', 'FLAUNT', 'GRAINS', 'HASTEN',
   'INSERT', 'JOINTS', 'KELVIN', 'LOATHE', 'MENTAL', 'NOSIER', 'OPERAS', 'PLANET',
   'QUIVER', 'REASON', 'SENIOR', 'TANGLE', 'UNITES', 'VARIES', 'WASTER', 'YOGURT',
-  'STRIPE', 'MASTER', 'STREAM', 'LISTEN', 'SILENT', 'HEARTS', 'SHEART', 'TRADES',
-  'STARED', 'BASTER', 'BREAST', 'CARETS', 'CASTER', 'RECAST', 'TRACES', 'CREATE',
-  'SINTER', 'TONIER', 'ORIENT', 'SENIOR', 'DATERS', 'TREADS', 'LASTED', 'SALTED',
-  'SLATED', 'STALED', 'DELTAS', 'PASTEL', 'PETALS', 'PLATES', 'PLEATS', 'STAPLE',
-  'PALEST', 'ALERTS', 'ALTERS', 'ARTELS', 'ESTRAL', 'LASTER', 'RATELS', 'SALTER',
-  'SLATER', 'STALER', 'STELAR', 'TALERS', 'ANTLER', 'LEARNT', 'RENTAL', 'ESPRIT',
-  'PRIEST', 'RIPEST', 'SPRITE', 'STRIPE', 'TRIPES', 'REMITS', 'MERITS', 'MISTER',
-  'MITERS', 'MITRES', 'SMITER', 'TIMERS', 'DIREST', 'DRIEST', 'STRIDE', 'CARIES',
-  'CERIAS', 'ERICAS', 'SATIRE', 'STRIAE', 'TERAIS', 'AIREST', 'ARIOSE', 'SORTIE'
+  'STRIPE', 'MASTER', 'STREAM', 'LISTEN', 'SILENT', 'HEARTS', 'TRADES', 'STARED',
+  'BASTER', 'BREAST', 'CARETS', 'CASTER', 'RECAST', 'TRACES', 'CREATE', 'SINTER',
+  'TONIER', 'ORIENT', 'DATERS', 'TREADS', 'LASTED', 'SALTED', 'SLATED', 'STALED',
+  'DELTAS', 'PASTEL', 'PETALS', 'PLATES', 'PLEATS', 'STAPLE', 'PALEST', 'ALERTS',
+  'ALTERS', 'ARTELS', 'ESTRAL', 'LASTER', 'RATELS', 'SALTER', 'SLATER', 'STALER',
+  'STELAR', 'TALERS', 'ANTLER', 'LEARNT', 'RENTAL', 'ESPRIT', 'PRIEST', 'RIPEST',
+  'SPRITE', 'TRIPES', 'REMITS', 'MERITS', 'MISTER', 'MITERS', 'MITRES', 'SMITER',
+  'TIMERS', 'DIREST', 'DRIEST', 'STRIDE', 'CARIES', 'CERIAS', 'ERICAS', 'SATIRE',
+  'STRIAE', 'TERAIS', 'AIREST', 'ARIOSE', 'SORTIE'
+];
+
+// 7-letter words (levels 6-10)
+const puzzleWords7 = [
+  'ALMONDS', 'ASTRIDE', 'BANTERS', 'BLASTER', 'CABINET', 'CARPETS', 'COASTER',
+  'CREDITS', 'DAIMONS', 'DANCERS', 'DETAINS', 'DRASTIC', 'EASTERN', 'ELASTIC',
+  'ENTRAPS', 'ESCAPED', 'FAINTED', 'FLOATER', 'GARDENS', 'GRANITE', 'HALTERS',
+  'HASTIER', 'HEALING', 'INSTEAD', 'LANTERN', 'LATRINE', 'LEADING', 'LATHERS',
+  'LOADING', 'MARVELS', 'MARSHAL', 'MASTERS', 'MATCHER', 'NASTIER', 'NEAREST',
+  'ORDAINS', 'PAINTER', 'PATROLS', 'PLASTER', 'PLANTED', 'PRATTLE', 'RATIONS',
+  'READING', 'RECITAL', 'RELIANT', 'REMAINS', 'REPLANT', 'RETAINS', 'SALTIER',
+  'SEATING', 'SHOUTED', 'SLACKER', 'SLANDER', 'SLATHER', 'SNORTED', 'SPATULA',
+  'STACKER', 'STAPLER', 'STEWARD', 'STORAGE', 'STRANGE', 'STREWN', 'TAILERS',
+  'TEASING', 'THREADS', 'TOASTED', 'TREASON', 'TRIPLED', 'TRUSTED', 'WARTIER'
+];
+
+// 8-letter words (levels 11+)
+const puzzleWords8 = [
+  'ADMIRALS', 'ALERTING', 'ALTERING', 'ASTEROID', 'BANISTER', 'CHAPTERS', 'CHARIEST',
+  'CITADELS', 'CLIMATES', 'COASTERS', 'CRANKEST', 'DANGLIER', 'DILATERS', 'DRAPIEST',
+  'EASTWARD', 'ENTRAILS', 'ESTRAGON', 'FINAGLED', 'FLOATING', 'GALLERIES', 'GRADIENT',
+  'GRANITES', 'GYRATION', 'HAIRIEST', 'HANDLING', 'HASTENED', 'HEIRDOMS', 'HORNIEST',
+  'INSTALRD', 'LANTERNS', 'LATRINES', 'LEADINGS', 'LEASTING', 'LOATHERS', 'MALTSTER',
+  'MARQUEST', 'MASTERED', 'MEDIATOR', 'MENSTRUA', 'MIGRANTS', 'MISRATED', 'MOISTENED',
+  'NACREOUS', 'PAINTERS', 'PARTINGS', 'PASTURED', 'PEDLARS', 'PLASTERED', 'PLASTERS',
+  'PRAISETH', 'RADICLES', 'REACTING', 'READOUTS', 'REDCOATS', 'RELATING', 'REPLANTS',
+  'RESALTED', 'RETAINED', 'ROUNDEST', 'SALARIED', 'SAUTEING', 'SCANTIER', 'SEDATION',
+  'SIDEREAL', 'SLANDERS', 'SMELTING', 'STAMPEDE', 'STEADING', 'STRAINED', 'STRANGLE',
+  'STREAMED', 'TANGIERS', 'THATCHES', 'TOASTING', 'TREASONS', 'TRIANGLE', 'WRASTLED'
 ];
 
 // Get letter signature for cache key (sorted uppercase letters)
@@ -49,12 +79,15 @@ function computeValidWords(letters) {
   });
 }
 
+// All puzzle words combined for caching
+const allPuzzleWords = [...puzzleWords6, ...puzzleWords7, ...puzzleWords8];
+
 // Build cache at startup
 (function initCache() {
   const startTime = Date.now();
   const seen = new Set();
 
-  for (const word of puzzleWords) {
+  for (const word of allPuzzleWords) {
     const sig = getLetterSignature(word);
     if (!seen.has(sig)) {
       seen.add(sig);
@@ -65,9 +98,26 @@ function computeValidWords(letters) {
   console.log(`Puzzle cache built: ${puzzleCache.size} unique signatures in ${Date.now() - startTime}ms`);
 })();
 
-function generatePuzzle() {
-  // Pick a random puzzle word
-  const baseWord = puzzleWords[Math.floor(Math.random() * puzzleWords.length)];
+function generatePuzzle(level = 1) {
+  // Select word list based on level:
+  // Levels 1-5: 6 letters
+  // Levels 6-10: 7 letters
+  // Levels 11+: 8 letters
+  let wordList;
+  let targetLength;
+  if (level <= 5) {
+    wordList = puzzleWords6;
+    targetLength = 6;
+  } else if (level <= 10) {
+    wordList = puzzleWords7;
+    targetLength = 7;
+  } else {
+    wordList = puzzleWords8;
+    targetLength = 8;
+  }
+
+  // Pick a random puzzle word from the appropriate list
+  const baseWord = wordList[Math.floor(Math.random() * wordList.length)];
   const letters = baseWord.split('');
 
   // Shuffle the letters
@@ -101,7 +151,7 @@ function generatePuzzle() {
     letters: letters,
     totalWords: cappedTotalWords,
     wordsByLength: wordsByLength,
-    hasFullWord: validWords.some(w => w.length === 6)
+    hasFullWord: validWords.some(w => w.length === targetLength)
   };
 }
 

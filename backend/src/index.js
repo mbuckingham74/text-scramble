@@ -134,7 +134,8 @@ const generalLimiter = createLimiter({
 
 // Generate a new puzzle
 app.get('/api/puzzle', gameLimiter, (req, res) => {
-  const puzzle = generatePuzzle();
+  const level = parseInt(req.query.level) || 1;
+  const puzzle = generatePuzzle(level);
   res.json(puzzle);
 });
 

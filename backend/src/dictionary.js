@@ -5,8 +5,10 @@ const path = require('path');
 const wordsPath = path.join(__dirname, 'words.txt');
 const wordList = fs.readFileSync(wordsPath, 'utf-8')
   .split('\n')
-  .map(word => word.trim().toUpperCase())
-  .filter(word => word.length >= 3 && word.length <= 6 && /^[A-Z]+$/.test(word));
+  .map(word => word.trim())
+  // Filter: 3-8 letters, only lowercase words (excludes proper nouns)
+  .filter(word => word.length >= 3 && word.length <= 8 && /^[a-z]+$/.test(word))
+  .map(word => word.toUpperCase());
 
 const dictionary = new Set(wordList);
 

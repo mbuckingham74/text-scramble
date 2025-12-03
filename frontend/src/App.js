@@ -304,10 +304,10 @@ function App() {
     }
   }, [handleAuthError]);
 
-  const startNewRound = useCallback(async (timed = timedMode) => {
+  const startNewRound = useCallback(async (timed = timedMode, puzzleLevel = 1) => {
     setApiError(''); // Clear errors when starting new round
     try {
-      const data = await apiFetch(`${API_URL}/puzzle`);
+      const data = await apiFetch(`${API_URL}/puzzle?level=${puzzleLevel}`);
 
       setLetters(data.letters);
       setWordsByLength(data.wordsByLength);
@@ -872,8 +872,9 @@ function App() {
           <button
             className="btn primary"
             onClick={() => {
-              setLevel(level + 1);
-              startNewRound();
+              const newLevel = level + 1;
+              setLevel(newLevel);
+              startNewRound(timedMode, newLevel);
             }}
           >
             Next Level
