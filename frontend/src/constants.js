@@ -1,5 +1,12 @@
-// Gameplay constants
-// These match the backend shared/constants.js values
+/**
+ * Gameplay constants for Word Twist frontend
+ *
+ * IMPORTANT: These values MUST match backend/src/constants.js
+ * The backend is the source of truth. If you change values here,
+ * update the backend first, then copy the changes here.
+ *
+ * CRA doesn't allow imports from outside src/, so we maintain this copy.
+ */
 
 // Timer settings (in seconds)
 export const TIMER_DURATION = 120;

@@ -1,4 +1,5 @@
-// Gameplay constants shared between frontend and backend
+// Gameplay constants - backend is source of truth
+// Frontend has a copy at frontend/src/constants.js that must be kept in sync
 
 // Timer settings (in seconds)
 const TIMER_DURATION = 120;
@@ -7,6 +8,7 @@ const TIMER_CRITICAL_THRESHOLD = 10;
 
 // Word validation
 const MIN_WORD_LENGTH = 3;
+const MAX_WORD_LENGTH = 8; // Maximum puzzle size (8-letter words at level 11+)
 
 // Scoring: points = (length * BASE) + ((length - MIN_WORD_LENGTH) * BONUS)
 const POINTS_PER_LETTER = 10;
@@ -43,6 +45,7 @@ module.exports = {
   TIMER_WARNING_THRESHOLD,
   TIMER_CRITICAL_THRESHOLD,
   MIN_WORD_LENGTH,
+  MAX_WORD_LENGTH,
   POINTS_PER_LETTER,
   BONUS_PER_EXTRA_LETTER,
   calculatePoints,

@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { MIN_WORD_LENGTH, MAX_WORD_LENGTH } = require('./constants');
 
 const registerSchema = z.object({
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
@@ -11,7 +12,7 @@ const loginSchema = z.object({
 });
 
 const validateWordSchema = z.object({
-  word: z.string().min(3).max(8).regex(/^[a-zA-Z]+$/),
+  word: z.string().min(MIN_WORD_LENGTH).max(MAX_WORD_LENGTH).regex(/^[a-zA-Z]+$/),
   sessionId: z.string().length(32).regex(/^[a-f0-9]+$/)
 });
 

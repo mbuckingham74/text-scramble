@@ -4,7 +4,7 @@ const {
   LEVEL_THRESHOLDS,
   getLetterCountForLevel,
   MAX_WORDS_PER_LENGTH
-} = require('../../shared/constants');
+} = require('./constants');
 
 // Puzzle words organized by length for progressive difficulty
 // Each list is deduped by letter signature to ensure uniform puzzle variety
