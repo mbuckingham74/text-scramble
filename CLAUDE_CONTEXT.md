@@ -56,7 +56,7 @@ Single-file React app with all game states:
 - `login` / `register` - Auth screens
 - `leaderboard` - Full leaderboard table view (both modes)
 
-Key state: `letters`, `foundWords`, `wordsByLength`, `score`, `level`, `timeLeft`, `user`, `token`, `leaderboard` (has `.timed` and `.untimed` arrays)
+Key state: `letters`, `foundWords`, `wordsByLength`, `score`, `level`, `timeLeft`, `user`, `token`, `leaderboard` (has `.timed` and `.untimed` arrays), `leaderboardModal` (shown when player makes top 10)
 
 Uses refs (`gameStateRef`, `messageTimeoutRef`) to avoid stale closures in callbacks.
 
@@ -147,6 +147,10 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 - **Found words**: Green slots
 - **Missed words**: Red slots (shown on game over)
 - **All Words section**: Shows all possible words at game over (max-height: 400px, scrollable)
+- **Leaderboard achievement modal**: Celebratory popup when player makes the top 10
+  - Bouncing trophy icon, animated pop-in effect
+  - Shows rank, score, and game mode
+  - Dismissible by clicking button or overlay background
 
 ## Security Features (Dec 2024)
 
@@ -189,3 +193,8 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - **Rate limiting**: Replaced single global limiter with per-route limiters (auth, game, score, general)
    - **Dockerfile optimization**: Changed `npm install` to `npm ci` for reproducible builds
    - **Performance**: Precompute valid words for all puzzle words at startup and cache by letter signature. Eliminates 30K dictionary scans on every `/api/puzzle` and `/api/solutions` request
+8. **Leaderboard achievement modal** (Dec 2024):
+   - When a player's score makes the top 10, a celebratory modal appears
+   - Features bouncing trophy icon, animated pop-in, rank display
+   - Shows score with locale formatting and game mode
+   - Detection happens in `endRound()` after score submission and leaderboard refresh
