@@ -117,10 +117,16 @@
   color: #6bb3f0;
 }
 
+/* Menu Leaderboards Container */
+.menu-leaderboards {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
 /* Menu Leaderboard */
 .menu-leaderboard {
-  width: 250px;
-  flex-shrink: 0;
+  width: 200px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 15px;
   padding: 20px;
@@ -657,6 +663,61 @@
   width: 100%;
 }
 
+.leaderboard-screen.wide {
+  max-width: 900px;
+}
+
+.leaderboard-tables {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.leaderboard-section {
+  flex: 1;
+  max-width: 400px;
+}
+
+.leaderboard-section h2 {
+  color: #4a90d9;
+  margin-bottom: 15px;
+}
+
+.leaderboard-section table {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+.leaderboard-section th,
+.leaderboard-section td {
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.leaderboard-section th {
+  color: #4a90d9;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(74, 144, 217, 0.3);
+}
+
+.leaderboard-section td {
+  color: #c0c0c0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-section tr:last-child td {
+  border-bottom: none;
+}
+
+.leaderboard-section tr.current-user td {
+  color: #4a90d9;
+  font-weight: 600;
+}
+
 .leaderboard-screen h1 {
   font-size: 2.5rem;
   color: #f5f5f0;
@@ -722,9 +783,24 @@
     align-items: center;
   }
 
-  .menu-leaderboard {
+  .menu-leaderboards {
+    flex-direction: row;
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
+  }
+
+  .menu-leaderboard {
+    flex: 1;
+    width: auto;
+  }
+
+  .leaderboard-tables {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .leaderboard-section {
+    width: 100%;
   }
 }
 

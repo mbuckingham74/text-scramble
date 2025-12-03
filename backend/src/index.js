@@ -140,17 +140,26 @@ app.post('/api/scores', authMiddleware, validate(scoreSchema), async (req, res) 
   }
 });
 
-// Get leaderboard (top 10 scores) - public
+// Get leaderboard (top 10 scores per mode) - public
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const [rows] = await db.execute(`
+    const [timedRows] = await db.execute(`
       SELECT s.id, s.score, s.level, s.words_found, s.game_mode, s.created_at, u.username
       FROM scores s
       JOIN users u ON s.user_id = u.id
+      WHERE s.game_mode = 'timed'
       ORDER BY s.score DESC
       LIMIT 10
     `);
-    res.json({ leaderboard: rows });
+    const [untimedRows] = await db.execute(`
+      SELECT s.id, s.score, s.level, s.words_found, s.game_mode, s.created_at, u.username
+      FROM scores s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.game_mode = 'untimed'
+      ORDER BY s.score DESC
+      LIMIT 10
+    `);
+    res.json({ timed: timedRows, untimed: untimedRows });
   } catch (error) {
     console.error('Leaderboard error:', error);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });

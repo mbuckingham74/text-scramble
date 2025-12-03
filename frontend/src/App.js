@@ -54,7 +54,7 @@ function App() {
   const [user, setUser] = useState(() => safeGetJSON('wordtwist_user'));
   const [token, setToken] = useState(() => safeGetString('wordtwist_token'));
   const [authError, setAuthError] = useState('');
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboard, setLeaderboard] = useState({ timed: [], untimed: [] });
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
@@ -148,7 +148,10 @@ function App() {
   const fetchLeaderboard = useCallback(async () => {
     try {
       const data = await apiFetch(`${API_URL}/leaderboard`);
-      setLeaderboard(data.leaderboard || []);
+      setLeaderboard({
+        timed: data.timed || [],
+        untimed: data.untimed || []
+      });
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
     }
@@ -483,37 +486,45 @@ function App() {
 
   // Leaderboard screen
   if (gameState === 'leaderboard') {
+    const renderLeaderboardTable = (entries, title) => (
+      <div className="leaderboard-section">
+        <h2>{title}</h2>
+        {entries.length === 0 ? (
+          <p className="no-scores">No scores yet. Be the first!</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Level</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, idx) => (
+                <tr key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                  <td>{idx + 1}</td>
+                  <td>{entry.username}</td>
+                  <td>{entry.score}</td>
+                  <td>{entry.level}</td>
+                  <td>{new Date(entry.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+
     return (
       <div className="app">
-        <div className="leaderboard-screen">
-          <h1>Leaderboard</h1>
-          <div className="leaderboard-list">
-            {leaderboard.length === 0 ? (
-              <p className="no-scores">No scores yet. Be the first!</p>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Player</th>
-                    <th>Score</th>
-                    <th>Level</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((entry, idx) => (
-                    <tr key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                      <td>{idx + 1}</td>
-                      <td>{entry.username}</td>
-                      <td>{entry.score}</td>
-                      <td>{entry.level}</td>
-                      <td>{new Date(entry.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+        <div className="leaderboard-screen wide">
+          <h1>Leaderboards</h1>
+          <div className="leaderboard-tables">
+            {renderLeaderboardTable(leaderboard.timed, 'Timed Mode')}
+            {renderLeaderboardTable(leaderboard.untimed, 'Untimed Mode')}
           </div>
           <button className="btn primary" onClick={() => setGameState('menu')}>Back to Menu</button>
         </div>
@@ -567,22 +578,39 @@ function App() {
             </div>
           </div>
 
-          <div className="menu-leaderboard">
-            <h2>Top 10</h2>
-            {leaderboard.length === 0 ? (
-              <p className="no-scores">No scores yet. Be the first!</p>
-            ) : (
-              <ol className="menu-leaderboard-list">
-                {leaderboard.map((entry, idx) => (
-                  <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                    <span className="rank">{idx + 1}.</span>
-                    <span className="name">{entry.username}</span>
-                    <span className="score">{entry.score}</span>
-                    <span className="date">{new Date(entry.created_at).toLocaleDateString()}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
+          <div className="menu-leaderboards">
+            <div className="menu-leaderboard">
+              <h2>Timed</h2>
+              {leaderboard.timed.length === 0 ? (
+                <p className="no-scores">No scores yet!</p>
+              ) : (
+                <ol className="menu-leaderboard-list">
+                  {leaderboard.timed.map((entry, idx) => (
+                    <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                      <span className="rank">{idx + 1}.</span>
+                      <span className="name">{entry.username}</span>
+                      <span className="score">{entry.score}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+            <div className="menu-leaderboard">
+              <h2>Untimed</h2>
+              {leaderboard.untimed.length === 0 ? (
+                <p className="no-scores">No scores yet!</p>
+              ) : (
+                <ol className="menu-leaderboard-list">
+                  {leaderboard.untimed.map((entry, idx) => (
+                    <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
+                      <span className="rank">{idx + 1}.</span>
+                      <span className="name">{entry.username}</span>
+                      <span className="score">{entry.score}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -618,7 +646,8 @@ function App() {
   }
 
   if (gameState === 'gameOver') {
-    const userRank = user ? leaderboard.findIndex(entry => entry.username === user.username && entry.score === score) + 1 : 0;
+    const currentLeaderboard = timedMode ? leaderboard.timed : leaderboard.untimed;
+    const userRank = user ? currentLeaderboard.findIndex(entry => entry.username === user.username && entry.score === score) + 1 : 0;
     const isOnLeaderboard = userRank > 0 && userRank <= 10;
 
     return (
@@ -727,17 +756,16 @@ function App() {
         </div>
 
         <aside className="leaderboard-sidebar">
-          <h3>Top 10</h3>
-          {leaderboard.length === 0 ? (
+          <h3>{timedMode ? 'Timed' : 'Untimed'} Top 10</h3>
+          {(timedMode ? leaderboard.timed : leaderboard.untimed).length === 0 ? (
             <p className="no-scores">No scores yet!</p>
           ) : (
             <ol className="sidebar-leaderboard">
-              {leaderboard.map((entry, idx) => (
+              {(timedMode ? leaderboard.timed : leaderboard.untimed).map((entry, idx) => (
                 <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
                   <span className="rank">{idx + 1}.</span>
                   <span className="name">{entry.username}</span>
                   <span className="score">{entry.score}</span>
-                  <span className="date">{new Date(entry.created_at).toLocaleDateString()}</span>
                 </li>
               ))}
             </ol>
