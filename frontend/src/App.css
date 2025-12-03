@@ -930,6 +930,84 @@
   font-size: 1.2rem;
 }
 
+/* Admin Link */
+.admin-link {
+  background: none;
+  border: none;
+  color: #505050;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 30px;
+  padding: 5px 10px;
+  transition: color 0.2s;
+}
+
+.admin-link:hover {
+  color: #808080;
+}
+
+/* Admin Dashboard */
+.admin-dashboard {
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+.admin-dashboard h1 {
+  font-size: 2.5rem;
+  color: #f5f5f0;
+  margin-bottom: 30px;
+  text-shadow:
+    -1px -1px 0 #4a90d9,
+    1px -1px 0 #4a90d9,
+    -1px 1px 0 #4a90d9,
+    1px 1px 0 #4a90d9;
+}
+
+.admin-stats-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-stat-card {
+  background: #1a1a2e;
+  border-radius: 15px;
+  padding: 25px 35px;
+  min-width: 180px;
+}
+
+.admin-stat-card.secondary {
+  background: #16213e;
+}
+
+.admin-stat-card.highlight {
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border: 1px solid #4a90d9;
+}
+
+.admin-stat-card .stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #4a90d9;
+  font-family: 'Fredoka One', cursive;
+}
+
+.admin-stat-card .stat-label {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+  margin-top: 5px;
+}
+
+.admin-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .leaderboard-sidebar {

@@ -269,6 +269,69 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Admin credentials (hardcoded for simplicity - in production, use env vars)
+const ADMIN_USERNAME = 'michael';
+const ADMIN_PASSWORD = 'jag97DOrp';
+
+// Admin auth middleware
+const adminAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
+  const [username, password] = credentials.split(':');
+
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Invalid admin credentials' });
+  }
+};
+
+// Admin stats endpoint
+app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
+  try {
+    // Get total registered users
+    const [[{ userCount }]] = await db.execute('SELECT COUNT(*) as userCount FROM users');
+
+    // Get total games played (each score entry = one game)
+    const [[{ gamesPlayed }]] = await db.execute('SELECT COUNT(*) as gamesPlayed FROM scores');
+
+    // Get total words correctly guessed across all games
+    const [[{ totalWordsGuessed }]] = await db.execute('SELECT COALESCE(SUM(words_found), 0) as totalWordsGuessed FROM scores');
+
+    // Get games by mode
+    const [[{ timedGames }]] = await db.execute("SELECT COUNT(*) as timedGames FROM scores WHERE game_mode = 'timed'");
+    const [[{ untimedGames }]] = await db.execute("SELECT COUNT(*) as untimedGames FROM scores WHERE game_mode = 'untimed'");
+
+    // Get recent registrations (last 7 days)
+    const [[{ recentUsers }]] = await db.execute(
+      'SELECT COUNT(*) as recentUsers FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
+    );
+
+    // Get recent games (last 7 days)
+    const [[{ recentGames }]] = await db.execute(
+      'SELECT COUNT(*) as recentGames FROM scores WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
+    );
+
+    res.json({
+      userCount,
+      gamesPlayed,
+      totalWordsGuessed,
+      timedGames,
+      untimedGames,
+      recentUsers,
+      recentGames
+    });
+  } catch (error) {
+    console.error('Admin stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin stats' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Word Twist backend running on port ${PORT}`);
 });

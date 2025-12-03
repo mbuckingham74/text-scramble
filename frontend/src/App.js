@@ -82,7 +82,7 @@ const apiFetch = async (url, options = {}) => {
 };
 
 function App() {
-  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard
+  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard, admin
   const [letters, setLetters] = useState([]);
   const [selectedIndices, setSelectedIndices] = useState([]);
   const [currentWord, setCurrentWord] = useState('');
@@ -105,6 +105,8 @@ function App() {
   const [leaderboard, setLeaderboard] = useState({ timed: [], untimed: [] });
   const [apiError, setApiError] = useState(''); // For surfacing API errors to users
   const [leaderboardModal, setLeaderboardModal] = useState(null); // { rank: number, score: number } when player makes leaderboard
+  const [adminStats, setAdminStats] = useState(null);
+  const [adminError, setAdminError] = useState('');
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
@@ -194,6 +196,61 @@ function App() {
     safeRemoveItem('wordtwist_user');
     safeRemoveItem('wordtwist_token');
   }, []);
+
+  const handleAdminLogin = async (username, password) => {
+    setAdminError('');
+    try {
+      const credentials = btoa(`${username}:${password}`);
+      const response = await fetch(`${API_URL}/admin/stats`, {
+        headers: {
+          'Authorization': `Basic ${credentials}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setAdminError('Invalid admin credentials');
+        } else {
+          setAdminError('Failed to access admin panel');
+        }
+        return;
+      }
+
+      const stats = await response.json();
+      setAdminStats(stats);
+      // Store credentials for refresh
+      safeSetItem('wordtwist_admin', credentials);
+      setGameState('admin');
+    } catch (error) {
+      setAdminError('Failed to connect to server');
+    }
+  };
+
+  const refreshAdminStats = async () => {
+    const credentials = safeGetString('wordtwist_admin');
+    if (!credentials) return;
+
+    try {
+      const response = await fetch(`${API_URL}/admin/stats`, {
+        headers: {
+          'Authorization': `Basic ${credentials}`
+        }
+      });
+
+      if (response.ok) {
+        const stats = await response.json();
+        setAdminStats(stats);
+      }
+    } catch (error) {
+      console.error('Failed to refresh admin stats:', error);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setAdminStats(null);
+    safeRemoveItem('wordtwist_admin');
+    setGameState('menu');
+  };
 
   // Handle 401 errors by logging out and showing error
   const handleAuthError = useCallback(() => {
@@ -575,6 +632,81 @@ function App() {
     );
   }
 
+  // Admin login screen
+  if (gameState === 'adminLogin') {
+    return (
+      <div className="app">
+        <div className="auth-form">
+          <h1>Admin Login</h1>
+          {adminError && <p className="auth-error">{adminError}</p>}
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target;
+            handleAdminLogin(form.username.value, form.password.value);
+          }}>
+            <input type="text" name="username" placeholder="Admin Username" required />
+            <input type="password" name="password" placeholder="Admin Password" required />
+            <button type="submit" className="btn primary">Login</button>
+          </form>
+          <button className="btn secondary" onClick={() => { setAdminError(''); setGameState('menu'); }}>Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin dashboard screen
+  if (gameState === 'admin') {
+    return (
+      <div className="app">
+        <div className="admin-dashboard">
+          <h1>Admin Dashboard</h1>
+          {adminStats && (
+            <>
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card">
+                  <div className="stat-value">{adminStats.userCount.toLocaleString()}</div>
+                  <div className="stat-label">Registered Users</div>
+                </div>
+                <div className="admin-stat-card">
+                  <div className="stat-value">{adminStats.gamesPlayed.toLocaleString()}</div>
+                  <div className="stat-label">Total Games Played</div>
+                </div>
+                <div className="admin-stat-card">
+                  <div className="stat-value">{adminStats.totalWordsGuessed.toLocaleString()}</div>
+                  <div className="stat-label">Words Correctly Guessed</div>
+                </div>
+              </div>
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card secondary">
+                  <div className="stat-value">{adminStats.timedGames.toLocaleString()}</div>
+                  <div className="stat-label">Timed Games</div>
+                </div>
+                <div className="admin-stat-card secondary">
+                  <div className="stat-value">{adminStats.untimedGames.toLocaleString()}</div>
+                  <div className="stat-label">Untimed Games</div>
+                </div>
+              </div>
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card highlight">
+                  <div className="stat-value">{adminStats.recentUsers.toLocaleString()}</div>
+                  <div className="stat-label">New Users (7 days)</div>
+                </div>
+                <div className="admin-stat-card highlight">
+                  <div className="stat-value">{adminStats.recentGames.toLocaleString()}</div>
+                  <div className="stat-label">Recent Games (7 days)</div>
+                </div>
+              </div>
+            </>
+          )}
+          <div className="admin-buttons">
+            <button className="btn secondary" onClick={refreshAdminStats}>Refresh</button>
+            <button className="btn danger" onClick={handleAdminLogout}>Logout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Leaderboard screen
   if (gameState === 'leaderboard') {
     const renderLeaderboardTable = (entries, title) => (
@@ -712,6 +844,7 @@ function App() {
               )}
             </div>
           </div>
+          <button className="admin-link" onClick={() => setGameState('adminLogin')}>Admin</button>
         </div>
       </div>
     </div>
