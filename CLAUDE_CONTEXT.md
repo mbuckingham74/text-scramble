@@ -34,6 +34,7 @@ word-twist/
 │   │   ├── auth.js         # JWT token generation & middleware
 │   │   ├── validation.js   # Zod schemas for input validation
 │   │   ├── game.js         # Puzzle generation & word validation
+│   │   ├── game.test.js    # Automated tests (run with npm test)
 │   │   ├── dictionary.js   # Word dictionary loader
 │   │   ├── db.js           # MySQL connection pool (env var required in prod)
 │   │   └── words.txt       # Dictionary (~53K words, 3-8 letters)
@@ -238,3 +239,16 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
     - Routes: `/` (menu), `/timed`, `/untimed`, `/admin`
     - Enables Matomo to track which game modes are most popular
     - Direct links to game modes start the game immediately
+12. **Puzzle quality fixes** (Dec 2024):
+    - Fixed validation schemas: `validateWordSchema` and `solutionsSchema` now accept 6-8 letters (was hard-capped to 6)
+    - Added ~100 common words to dictionary (plurals, past tenses like CATS, LASTED, DREAMS)
+    - Removed 39 puzzle words missing from dictionary
+    - Deduped puzzle words by letter signature to prevent anagram bias (e.g., LISTEN/SILENT share a signature, only one kept)
+    - Final puzzle counts: 64 unique 6-letter, 58 unique 7-letter, 45 unique 8-letter signatures
+    - Added automated test suite (`npm test`) with 19 tests covering:
+      - Dictionary alignment (all puzzle words exist in dictionary)
+      - No duplicate signatures within each puzzle pool
+      - Correct word lengths per pool
+      - Puzzle generation returns correct letter counts per level
+      - Word validation (accepts valid, rejects invalid/short/unavailable letters)
+      - getAllValidWords returns expected results
