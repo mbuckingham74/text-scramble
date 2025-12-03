@@ -12,22 +12,41 @@ const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreS
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - required for rate limiting behind Nginx Proxy Manager
-app.set('trust proxy', 1);
+// Trust proxy - set to true to trust the full X-Forwarded-For chain
+// This works for Cloudflare -> NPM -> app or any multi-proxy setup
+app.set('trust proxy', true);
 
-// Redis client for rate limiting
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379/1'
-});
+// Redis client for rate limiting (with fallback to memory store)
+let redisClient = null;
+let redisReady = false;
 
-redisClient.on('error', (err) => console.error('Redis error:', err));
-redisClient.on('connect', () => console.log('Connected to Redis for rate limiting'));
+if (process.env.REDIS_URL) {
+  redisClient = createClient({
+    url: process.env.REDIS_URL
+  });
 
-// Connect to Redis (non-blocking - rate limiting will fall back to memory if not connected)
-redisClient.connect().catch(err => {
-  console.error('Failed to connect to Redis:', err);
-  console.log('Rate limiting will use in-memory store as fallback');
-});
+  redisClient.on('error', (err) => {
+    console.error('Redis error:', err.message);
+    redisReady = false;
+  });
+
+  redisClient.on('ready', () => {
+    console.log('Connected to Redis for rate limiting');
+    redisReady = true;
+  });
+
+  redisClient.on('end', () => {
+    console.log('Redis connection closed');
+    redisReady = false;
+  });
+
+  redisClient.connect().catch(err => {
+    console.error('Failed to connect to Redis:', err.message);
+    console.log('Rate limiting will use in-memory store');
+  });
+} else {
+  console.log('REDIS_URL not set - using in-memory rate limiting');
+}
 
 // CORS - restrict to known origins
 const allowedOrigins = [
@@ -52,51 +71,65 @@ app.use(cors({
 
 app.use(express.json({ limit: '10kb' }));
 
-// Create Redis store for rate limiting
-const createRedisStore = (prefix) => new RedisStore({
-  sendCommand: (...args) => redisClient.sendCommand(args),
-  prefix: `wordtwist:${prefix}:`
-});
+// Create rate limiter store - uses Redis if available, otherwise falls back to memory
+const createStore = (prefix) => {
+  if (redisClient && redisReady) {
+    return new RedisStore({
+      sendCommand: async (...args) => {
+        if (!redisReady) {
+          throw new Error('Redis not ready');
+        }
+        return redisClient.sendCommand(args);
+      },
+      prefix: `wordtwist:${prefix}:`
+    });
+  }
+  // Return undefined to use default MemoryStore
+  return undefined;
+};
+
+// Rate limiter factory - creates limiter with dynamic store selection
+const createLimiter = (options, prefix) => {
+  return rateLimit({
+    ...options,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Dynamically get store on each request to handle Redis reconnection
+    store: createStore(prefix),
+    // Skip store errors - fall back to allowing the request rather than 500
+    handler: (req, res, next, options) => {
+      res.status(options.statusCode).json(options.message);
+    }
+  });
+};
 
 // Rate limiting for auth endpoints (strictest)
-const authLimiter = rateLimit({
+const authLimiter = createLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 attempts per window
-  message: { error: 'Too many attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createRedisStore('auth')
-});
+  message: { error: 'Too many attempts, please try again later' }
+}, 'auth');
 
 // Rate limiter for game endpoints (puzzle, validate, solutions)
-const gameLimiter = rateLimit({
+const gameLimiter = createLimiter({
   windowMs: 60 * 1000, // 1 minute
-  max: 300, // 300 requests per minute (more generous with Redis)
-  message: { error: 'Too many game requests, please slow down' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createRedisStore('game')
-});
+  max: 300, // 300 requests per minute
+  message: { error: 'Too many game requests, please slow down' }
+}, 'game');
 
 // Rate limiter for score submission
-const scoreLimiter = rateLimit({
+const scoreLimiter = createLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // 20 score submissions per minute
-  message: { error: 'Too many score submissions' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createRedisStore('score')
-});
+  message: { error: 'Too many score submissions' }
+}, 'score');
 
 // General rate limiter for other endpoints (leaderboard, health)
-const generalLimiter = rateLimit({
+const generalLimiter = createLimiter({
   windowMs: 60 * 1000, // 1 minute
   max: 200, // 200 requests per minute
-  message: { error: 'Too many requests, please slow down' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createRedisStore('general')
-});
+  message: { error: 'Too many requests, please slow down' }
+}, 'general');
 
 // Generate a new puzzle
 app.get('/api/puzzle', gameLimiter, (req, res) => {
