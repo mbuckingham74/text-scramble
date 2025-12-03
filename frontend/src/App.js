@@ -632,50 +632,53 @@ function App() {
             <button className="dismiss-btn" onClick={() => setApiError('')}>×</button>
           </div>
         )}
+        <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+          {soundEnabled ? '🔊' : '🔇'}
+        </button>
         <div className="menu-layout">
-          <div className="menu">
-            <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
-              {soundEnabled ? '🔊' : '🔇'}
-            </button>
+          <div className="menu-title">
             <h1>Word Twist</h1>
             <p className="subtitle">Unscramble letters to find words!</p>
-
-            {user ? (
-              <div className="user-info">
-                <span>Welcome, <strong>{user.username}</strong>!</span>
-                <button className="link-btn" onClick={handleLogout}>Logout</button>
-              </div>
-            ) : (
-              <div className="auth-buttons">
-                <button className="btn secondary" onClick={() => setGameState('login')}>Login</button>
-                <button className="btn secondary" onClick={() => setGameState('register')}>Register</button>
-              </div>
-            )}
-
-            <div className="menu-buttons">
-              <button className="btn primary" onClick={() => startGame(true)}>
-                Timed Mode
-              </button>
-              <button className="btn secondary" onClick={() => startGame(false)}>
-                Untimed Mode
-              </button>
-            </div>
-
-            <div className="instructions">
-              <h3>How to Play</h3>
-              <ul>
-                <li>Click letters or type to form words</li>
-                <li>Press <kbd>Enter</kbd> to submit</li>
-                <li>Press <kbd>Space</kbd> to shuffle</li>
-                <li>Press <kbd>Backspace</kbd> to delete</li>
-                <li>Press <kbd>Tab</kbd> to clear</li>
-                <li>Find a 6-letter word to advance!</li>
-                {!user && <li><em>Login to save your scores!</em></li>}
-              </ul>
-            </div>
           </div>
 
-          <div className="menu-leaderboards">
+          <div className="menu-content">
+            <div className="menu">
+              {user ? (
+                <div className="user-info">
+                  <span>Welcome, <strong>{user.username}</strong>!</span>
+                  <button className="link-btn" onClick={handleLogout}>Logout</button>
+                </div>
+              ) : (
+                <div className="auth-buttons">
+                  <button className="btn secondary" onClick={() => setGameState('login')}>Login</button>
+                  <button className="btn secondary" onClick={() => setGameState('register')}>Register</button>
+                </div>
+              )}
+
+              <div className="menu-buttons">
+                <button className="btn primary" onClick={() => startGame(true)}>
+                  Timed Mode
+                </button>
+                <button className="btn secondary" onClick={() => startGame(false)}>
+                  Untimed Mode
+                </button>
+              </div>
+
+              <div className="instructions">
+                <h3>How to Play</h3>
+                <ul>
+                  <li>Click letters or type to form words</li>
+                  <li>Press <kbd>Enter</kbd> to submit</li>
+                  <li>Press <kbd>Space</kbd> to shuffle</li>
+                  <li>Press <kbd>Backspace</kbd> to delete</li>
+                  <li>Press <kbd>Tab</kbd> to clear</li>
+                  <li>Find a 6-letter word to advance!</li>
+                  {!user && <li><em>Login to save your scores!</em></li>}
+                </ul>
+              </div>
+            </div>
+
+            <div className="menu-leaderboards">
             <div className="menu-leaderboard">
               <h2>Timed</h2>
               {leaderboard.timed.length === 0 ? (
@@ -711,6 +714,7 @@ function App() {
           </div>
         </div>
       </div>
+    </div>
     );
   }
 

@@ -80,9 +80,33 @@
 /* Menu Layout with Leaderboard */
 .menu-layout {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 900px;
+  width: 100%;
+}
+
+.menu-title {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.menu-title h1 {
+  font-size: 4.8rem;
+  color: #f5f5f0;
+  margin-bottom: 10px;
+  text-shadow:
+    -1px -1px 0 #4a90d9,
+    1px -1px 0 #4a90d9,
+    -1px 1px 0 #4a90d9,
+    1px 1px 0 #4a90d9,
+    0 0 20px rgba(74, 144, 217, 0.3);
+}
+
+.menu-content {
+  display: flex;
   gap: 40px;
   align-items: flex-start;
-  max-width: 900px;
   width: 100%;
 }
 
@@ -94,17 +118,6 @@
   flex: 1;
 }
 
-.menu h1 {
-  font-size: 4rem;
-  color: #f5f5f0;
-  margin-bottom: 10px;
-  text-shadow:
-    -1px -1px 0 #4a90d9,
-    1px -1px 0 #4a90d9,
-    -1px 1px 0 #4a90d9,
-    1px 1px 0 #4a90d9,
-    0 0 20px rgba(74, 144, 217, 0.3);
-}
 
 .subtitle {
   font-size: 1.2rem;
@@ -914,7 +927,7 @@
     display: none;
   }
 
-  .menu-layout {
+  .menu-content {
     flex-direction: column;
     align-items: center;
   }
@@ -941,8 +954,8 @@
 }
 
 @media (max-width: 600px) {
-  .menu h1 {
-    font-size: 2.5rem;
+  .menu-title h1 {
+    font-size: 3rem;
   }
 
   .letter-tile {
