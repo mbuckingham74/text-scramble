@@ -659,7 +659,7 @@ function App() {
     return (
       <div className="app">
         <div className="admin-dashboard">
-          <h1>Admin Dashboard</h1>
+          <h1>Word Twist Admin Dashboard</h1>
           {adminStats && (
             <>
               <div className="admin-stats-grid">
@@ -706,6 +706,7 @@ function App() {
           )}
           <div className="admin-buttons">
             <button className="btn secondary" onClick={refreshAdminStats}>Refresh</button>
+            <button className="btn primary" onClick={() => setGameState('menu')}>Back to Game</button>
             <button className="btn danger" onClick={handleAdminLogout}>Logout</button>
           </div>
         </div>
