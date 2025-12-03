@@ -320,16 +320,17 @@
 /* Game Layout with Sidebar */
 .game-layout {
   display: flex;
-  gap: 20px;
+  justify-content: center;
   align-items: flex-start;
   max-width: 1300px;
   width: 100%;
+  position: relative;
 }
 
 /* Game Styles */
 .game {
-  flex: 1;
   max-width: 1000px;
+  width: 100%;
 }
 
 .game-header {
@@ -600,8 +601,10 @@
 
 /* Leaderboard Sidebar */
 .leaderboard-sidebar {
+  position: absolute;
+  right: 0;
+  top: 0;
   width: 200px;
-  flex-shrink: 0;
   background: #1a1a2e;
   border-radius: 12px;
   padding: 15px;
