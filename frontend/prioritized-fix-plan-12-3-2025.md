@@ -28,7 +28,7 @@ Issues identified during codebase review, organized by functionality area.
 
 ## Area 3: Authentication Security
 
-### T3: Admin Auth Hardening 🔄 IN REVIEW
+### T3: Admin Auth Hardening ✅ MERGED
 - **Issue**: Admin credentials stored in localStorage, sent via Basic auth
 - **Scope**:
   - `backend/src/index.js` - new login/logout endpoints, cookie middleware
@@ -99,7 +99,7 @@ When reviewing a GitHub PR, only flag issues that are **in scope** for that task
 |------|------|-----------|--------|
 | Critical Bugs | T1 | #5 | ✅ Merged |
 | Build/DevOps | T2 | #6 | ✅ Merged |
-| Auth - Admin | T3 | #8 | 🔄 In review |
+| Auth - Admin | T3 | #8 | ✅ Merged |
 | Auth - User | T4 | - | ⏳ Not started |
 | Privacy | T5 | - | ⏳ Not started |
 | Constants | T6 | - | ⏳ Not started |
