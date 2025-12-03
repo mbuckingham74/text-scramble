@@ -1,7 +1,10 @@
 const crypto = require('crypto');
 
-// Session expiry time (2 hours - enough for a long game)
+// Game session expiry time (2 hours - enough for a long game)
 const SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+// Admin session expiry time (8 hours)
+const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
 
 // Redis client (set by init function)
 let redisClient = null;
@@ -9,6 +12,7 @@ let redisReady = false;
 
 // In-memory fallback for when Redis is unavailable
 const memorySessions = new Map();
+const memoryAdminSessions = new Map();
 
 // Lua script for atomic word recording (check + add + increment)
 // Returns: [success (0/1), newScore, errorMessage]
@@ -261,6 +265,83 @@ function cleanupMemorySessions() {
 // Start cleanup interval for memory sessions (every 10 minutes)
 setInterval(cleanupMemorySessions, 10 * 60 * 1000);
 
+// ============ Admin Session Functions ============
+
+function getAdminRedisKey(sessionId) {
+  return `wordtwist:admin:${sessionId}`;
+}
+
+// Create an admin session
+async function createAdminSession() {
+  const sessionId = generateSessionId();
+  const session = {
+    sessionId,
+    createdAt: Date.now()
+  };
+
+  if (redisClient && redisReady) {
+    try {
+      await redisClient.setEx(
+        getAdminRedisKey(sessionId),
+        ADMIN_SESSION_TTL_SECONDS,
+        JSON.stringify(session)
+      );
+      return sessionId;
+    } catch (err) {
+      console.error('Redis admin session create error, falling back to memory:', err.message);
+    }
+  }
+
+  // Memory fallback
+  memoryAdminSessions.set(sessionId, session);
+  return sessionId;
+}
+
+// Validate an admin session
+async function validateAdminSession(sessionId) {
+  if (!sessionId) return false;
+
+  // Try Redis first
+  if (redisClient && redisReady) {
+    try {
+      const data = await redisClient.get(getAdminRedisKey(sessionId));
+      if (data) return true;
+    } catch (err) {
+      console.error('Redis admin session validate error:', err.message);
+    }
+  }
+
+  // Check memory fallback
+  const session = memoryAdminSessions.get(sessionId);
+  if (!session) return false;
+
+  // Check expiry
+  if (Date.now() - session.createdAt > ADMIN_SESSION_TTL_SECONDS * 1000) {
+    memoryAdminSessions.delete(sessionId);
+    return false;
+  }
+
+  return true;
+}
+
+// Delete an admin session
+async function deleteAdminSession(sessionId) {
+  if (!sessionId) return;
+
+  if (redisClient && redisReady) {
+    try {
+      await redisClient.del(getAdminRedisKey(sessionId));
+    } catch (err) {
+      console.error('Redis admin session delete error:', err.message);
+    }
+  }
+
+  memoryAdminSessions.delete(sessionId);
+}
+
+// Export admin session TTL for cookie maxAge
+const ADMIN_SESSION_TTL_MS = ADMIN_SESSION_TTL_SECONDS * 1000;
+
 module.exports = {
   initSessionStore,
   setRedisReady,
@@ -269,5 +350,10 @@ module.exports = {
   recordWord,
   getSessionSummary,
   endSession,
-  getSessionCount
+  getSessionCount,
+  // Admin session exports
+  createAdminSession,
+  validateAdminSession,
+  deleteAdminSession,
+  ADMIN_SESSION_TTL_MS
 };
