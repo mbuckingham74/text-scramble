@@ -120,6 +120,22 @@ const createLimiter = (options, prefix) => {
   // Create stores upfront
   const memoryStore = getMemoryStore(prefix, options.windowMs);
   let redisStore = null;
+  let redisStoreInitialized = false;
+
+  // Lazy initialize Redis store only when Redis is ready
+  const getRedisStore = () => {
+    if (!redisClient || !redisReady) return null;
+    if (!redisStore) {
+      try {
+        redisStore = createRedisStore(prefix);
+        redisStoreInitialized = false;
+      } catch (err) {
+        console.error(`Failed to create Redis store for ${prefix}:`, err.message);
+        return null;
+      }
+    }
+    return redisStore;
+  };
 
   return rateLimit({
     ...options,
@@ -128,19 +144,21 @@ const createLimiter = (options, prefix) => {
     // Use a custom store wrapper that checks Redis availability per request
     store: {
       init: (options) => {
-        // Initialize both stores
+        // Only initialize memory store at startup
         memoryStore.init?.(options);
-        if (redisClient) {
-          redisStore = createRedisStore(prefix);
-          redisStore.init?.(options);
-        }
+        // Redis store will be lazily initialized on first use when ready
       },
       // Note: get() is not part of the express-rate-limit Store interface
       // The library uses increment() which returns totalHits and resetTime
       increment: async (key) => {
-        if (redisClient && redisReady && redisStore) {
+        const store = getRedisStore();
+        if (store) {
           try {
-            return await redisStore.increment(key);
+            if (!redisStoreInitialized) {
+              // Initialize on first use
+              redisStoreInitialized = true;
+            }
+            return await store.increment(key);
           } catch (err) {
             console.error(`Redis increment error for ${prefix}, falling back to memory:`, err.message);
           }
@@ -148,9 +166,10 @@ const createLimiter = (options, prefix) => {
         return memoryStore.increment(key);
       },
       decrement: async (key) => {
-        if (redisClient && redisReady && redisStore) {
+        const store = getRedisStore();
+        if (store) {
           try {
-            return await redisStore.decrement(key);
+            return await store.decrement(key);
           } catch (err) {
             console.error(`Redis decrement error for ${prefix}, falling back to memory:`, err.message);
           }
@@ -158,9 +177,10 @@ const createLimiter = (options, prefix) => {
         return memoryStore.decrement(key);
       },
       resetKey: async (key) => {
-        if (redisClient && redisReady && redisStore) {
+        const store = getRedisStore();
+        if (store) {
           try {
-            return await redisStore.resetKey(key);
+            return await store.resetKey(key);
           } catch (err) {
             console.error(`Redis resetKey error for ${prefix}, falling back to memory:`, err.message);
           }
