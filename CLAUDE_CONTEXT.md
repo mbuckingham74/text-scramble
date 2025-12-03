@@ -36,7 +36,7 @@ word-twist/
 │   │   ├── game.js         # Puzzle generation & word validation
 │   │   ├── dictionary.js   # Word dictionary loader
 │   │   ├── db.js           # MySQL connection pool (env var required in prod)
-│   │   └── words.txt       # Scrabble dictionary (29,771 words, 3-6 letters)
+│   │   └── words.txt       # Dictionary (~53K words, 3-8 letters)
 │   ├── init.sql            # Database schema
 │   ├── Dockerfile
 │   └── package.json
@@ -63,7 +63,7 @@ Uses refs (`gameStateRef`, `messageTimeoutRef`) to avoid stale closures in callb
 
 ### Backend - index.js
 Express API endpoints:
-- `GET /api/puzzle` - Generate new 6-letter puzzle
+- `GET /api/puzzle?level=N` - Generate puzzle (6 letters levels 1-5, 7 letters 6-10, 8 letters 11+)
 - `POST /api/validate` - Check if word is valid (Zod validated)
 - `POST /api/solutions` - Get all valid words for letters
 - `POST /api/register` / `POST /api/login` - Auth (returns JWT token)
@@ -80,7 +80,7 @@ Express API endpoints:
 ### Backend - validation.js
 Zod schemas for all inputs:
 - `registerSchema` / `loginSchema` - username (3-20 chars), password (4-100 chars)
-- `validateWordSchema` - word (3-6 letters), letters (array of 6)
+- `validateWordSchema` - word (3-8 letters), letters (array of 6-8)
 - `solutionsSchema` - letters array
 - `scoreSchema` - score (0-1M), level (1-1000), wordsFound (0-500), gameMode enum
 
@@ -121,12 +121,17 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 
 ## Game Rules
 
-1. Given 6 scrambled letters (from a valid 6-letter word)
-2. Find as many 3-6 letter words as possible
-3. Must find at least one 6-letter word to advance to next level
+1. Given scrambled letters (6-8 depending on level)
+2. Find as many valid words (3+ letters) as possible
+3. Must find at least one full-length word to advance to next level
 4. Timed mode: 2 minutes per round
 5. Untimed mode: No timer
 6. Points: word_length * 10 + (word_length - 3) * 5
+
+### Progressive Difficulty
+- **Levels 1-5**: 6-letter puzzles (find 3-6 letter words)
+- **Levels 6-10**: 7-letter puzzles (find 3-7 letter words)
+- **Levels 11+**: 8-letter puzzles (find 3-8 letter words)
 
 ## Design Details
 
@@ -211,3 +216,10 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - Backend connects via external `authelia_authelia-backend` Docker network
    - Increased rate limits for better gameplay (game: 300/min, score: 20/min)
    - Fixed `trust proxy` to `2` (number of proxies) for express-rate-limit v7 compatibility
+10. **Progressive difficulty** (Dec 2024):
+    - Expanded dictionary from ~30K words (3-6 letters) to ~53K words (3-8 letters)
+    - Sourced from `/usr/share/dict/words`, filtering out proper nouns
+    - Puzzle word lists organized by length: `puzzleWords6`, `puzzleWords7`, `puzzleWords8`
+    - Levels 1-5 use 6-letter puzzles, 6-10 use 7-letter, 11+ use 8-letter
+    - API accepts `?level=N` query parameter to generate appropriate puzzle
+    - Frontend passes current level when fetching new puzzles

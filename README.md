@@ -23,7 +23,7 @@
 
 ## About the Game
 
-Word Twist presents you with 6 scrambled letters and challenges you to find all valid English words (3-6 letters) that can be formed from them. The letters are always derived from a valid 6-letter word, so there's always at least one full solution.
+Word Twist presents you with scrambled letters and challenges you to find all valid English words that can be formed from them. The game features **progressive difficulty** — puzzles start with 6 letters and grow to 7 and then 8 letters as you advance through levels.
 
 ### Game Modes
 
@@ -42,6 +42,14 @@ Word Twist presents you with 6 scrambled letters and challenges you to find all 
 | `Backspace` | Delete last letter |
 | `Tab` | Clear selection |
 
+### Progressive Difficulty
+
+| Level | Letters | Words to Find |
+|-------|---------|---------------|
+| 1-5 | 6 letters | 3-6 letter words |
+| 6-10 | 7 letters | 3-7 letter words |
+| 11+ | 8 letters | 3-8 letter words |
+
 ### Scoring
 
 | Word Length | Points |
@@ -50,8 +58,10 @@ Word Twist presents you with 6 scrambled letters and challenges you to find all 
 | 4 letters | 45 pts |
 | 5 letters | 60 pts |
 | 6 letters | 75 pts |
+| 7 letters | 90 pts |
+| 8 letters | 105 pts |
 
-> **Tip:** Find at least one 6-letter word to advance to the next level!
+> **Tip:** Find at least one full-length word to advance to the next level!
 
 ---
 
@@ -163,7 +173,7 @@ word-twist/
 │   │   ├── index.js    # API endpoints
 │   │   ├── game.js     # Game logic
 │   │   ├── auth.js     # JWT authentication
-│   │   └── words.txt   # Dictionary (29,771 words)
+│   │   └── words.txt   # Dictionary (~53K words, 3-8 letters)
 │   ├── init.sql        # Database schema
 │   └── Dockerfile
 ├── docker-compose.yml
@@ -176,7 +186,7 @@ word-twist/
 
 | Method | Endpoint | Auth | Description |
 |:------:|----------|:----:|-------------|
-| `GET` | `/api/puzzle` | | Generate a new puzzle |
+| `GET` | `/api/puzzle?level=N` | | Generate puzzle for given level |
 | `POST` | `/api/validate` | | Validate a word submission |
 | `POST` | `/api/solutions` | | Get all valid words for letters |
 | `POST` | `/api/register` | | Register a new user |
