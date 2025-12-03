@@ -764,9 +764,12 @@ function App() {
             <button className="dismiss-btn" onClick={() => setApiError('')}>×</button>
           </div>
         )}
-        <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
-          {soundEnabled ? '🔊' : '🔇'}
-        </button>
+        <div className="top-right-controls">
+          <button className="admin-link" onClick={() => setGameState('adminLogin')}>Admin</button>
+          <button className="sound-toggle-inline" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+            {soundEnabled ? '🔊' : '🔇'}
+          </button>
+        </div>
         <div className="menu-layout">
           <div className="menu-title">
             <h1>Word Twist</h1>
@@ -844,7 +847,6 @@ function App() {
               )}
             </div>
           </div>
-          <button className="admin-link" onClick={() => setGameState('adminLogin')}>Admin</button>
         </div>
       </div>
     </div>
