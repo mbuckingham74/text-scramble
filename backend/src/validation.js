@@ -12,18 +12,15 @@ const loginSchema = z.object({
 
 const validateWordSchema = z.object({
   word: z.string().min(3).max(8).regex(/^[a-zA-Z]+$/),
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8)
+  sessionId: z.string().length(32).regex(/^[a-f0-9]+$/)
 });
 
 const solutionsSchema = z.object({
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8)
+  sessionId: z.string().length(32).regex(/^[a-f0-9]+$/)
 });
 
 const scoreSchema = z.object({
-  score: z.number().int().min(0).max(1000000),
-  level: z.number().int().min(1).max(1000),
-  wordsFound: z.number().int().min(0).max(500),
-  gameMode: z.enum(['timed', 'untimed'])
+  sessionId: z.string().length(32).regex(/^[a-f0-9]+$/)
 });
 
 function validate(schema) {

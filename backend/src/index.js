@@ -9,6 +9,7 @@ const dictionary = require('./dictionary');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
+const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount } = require('./session');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,21 +30,25 @@ if (process.env.REDIS_URL) {
   redisClient.on('error', (err) => {
     console.error('Redis error:', err.message);
     redisReady = false;
+    setRedisReady(false);
   });
 
   redisClient.on('ready', () => {
-    console.log('Connected to Redis for rate limiting');
+    console.log('Connected to Redis for rate limiting and sessions');
     redisReady = true;
+    setRedisReady(true);
+    initSessionStore(redisClient, true);
   });
 
   redisClient.on('end', () => {
     console.log('Redis connection closed');
     redisReady = false;
+    setRedisReady(false);
   });
 
   redisClient.connect().catch(err => {
     console.error('Failed to connect to Redis:', err.message);
-    console.log('Rate limiting will use in-memory store');
+    console.log('Rate limiting and sessions will use in-memory store');
   });
 } else {
   console.log('REDIS_URL not set - using in-memory rate limiting');
@@ -72,32 +77,84 @@ app.use(cors({
 
 app.use(express.json({ limit: '10kb' }));
 
-// Create rate limiter store - uses Redis if available, otherwise falls back to memory
-const createStore = (prefix) => {
-  if (redisClient && redisReady) {
-    return new RedisStore({
-      sendCommand: async (...args) => {
-        if (!redisReady) {
-          throw new Error('Redis not ready');
-        }
-        return redisClient.sendCommand(args);
-      },
-      prefix: `wordtwist:${prefix}:`
-    });
+// Memory stores for fallback (one per limiter prefix)
+const memoryStores = new Map();
+
+// Get or create a memory store for a prefix
+const getMemoryStore = (prefix, windowMs) => {
+  if (!memoryStores.has(prefix)) {
+    const { MemoryStore } = require('express-rate-limit');
+    memoryStores.set(prefix, new MemoryStore());
   }
-  // Return undefined to use default MemoryStore
-  return undefined;
+  return memoryStores.get(prefix);
 };
 
-// Rate limiter factory - creates limiter with dynamic store selection
+// Create Redis store with error handling that falls back gracefully
+const createRedisStore = (prefix) => {
+  return new RedisStore({
+    sendCommand: async (...args) => {
+      if (!redisReady) {
+        throw new Error('Redis not ready');
+      }
+      return redisClient.sendCommand(args);
+    },
+    prefix: `wordtwist:${prefix}:`
+  });
+};
+
+// Rate limiter factory with dynamic store selection per request
 const createLimiter = (options, prefix) => {
+  // Create stores upfront
+  const memoryStore = getMemoryStore(prefix, options.windowMs);
+  let redisStore = null;
+
   return rateLimit({
     ...options,
     standardHeaders: true,
     legacyHeaders: false,
-    // Dynamically get store on each request to handle Redis reconnection
-    store: createStore(prefix),
-    // Skip store errors - fall back to allowing the request rather than 500
+    // Use a custom store wrapper that checks Redis availability per request
+    store: {
+      init: (options) => {
+        // Initialize both stores
+        memoryStore.init?.(options);
+        if (redisClient) {
+          redisStore = createRedisStore(prefix);
+          redisStore.init?.(options);
+        }
+      },
+      // Note: get() is not part of the express-rate-limit Store interface
+      // The library uses increment() which returns totalHits and resetTime
+      increment: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.increment(key);
+          } catch (err) {
+            console.error(`Redis increment error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.increment(key);
+      },
+      decrement: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.decrement(key);
+          } catch (err) {
+            console.error(`Redis decrement error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.decrement(key);
+      },
+      resetKey: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.resetKey(key);
+          } catch (err) {
+            console.error(`Redis resetKey error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.resetKey(key);
+      }
+    },
     handler: (req, res, next, options) => {
       res.status(options.statusCode).json(options.message);
     }
@@ -133,24 +190,62 @@ const generalLimiter = createLimiter({
 }, 'general');
 
 // Generate a new puzzle
-app.get('/api/puzzle', gameLimiter, (req, res) => {
+app.get('/api/puzzle', gameLimiter, async (req, res) => {
   const level = parseInt(req.query.level) || 1;
+  const gameMode = req.query.mode === 'untimed' ? 'untimed' : 'timed';
   const puzzle = generatePuzzle(level);
-  res.json(puzzle);
+
+  // Create a server-side session to track this game
+  const sessionId = await createSession(puzzle.letters, level, gameMode);
+
+  res.json({ ...puzzle, sessionId });
 });
 
+// Calculate points for a word
+function calculatePoints(wordLength) {
+  return wordLength * 10 + (wordLength - 3) * 5;
+}
+
 // Validate a word submission
-app.post('/api/validate', gameLimiter, validate(validateWordSchema), (req, res) => {
-  const { word, letters } = req.validated;
-  const isValid = validateWord(word, letters);
-  res.json({ valid: isValid, word: word.toUpperCase() });
+app.post('/api/validate', gameLimiter, validate(validateWordSchema), async (req, res) => {
+  const { word, sessionId } = req.validated;
+  const upperWord = word.toUpperCase();
+
+  // Get session and validate against server-stored letters (not client-provided)
+  const session = await getSession(sessionId);
+  if (!session) {
+    return res.status(400).json({ valid: false, word: upperWord, error: 'Invalid or expired session' });
+  }
+
+  // Validate word against the session's letters
+  const isValid = validateWord(upperWord, session.letters);
+  const points = isValid ? calculatePoints(upperWord.length) : 0;
+
+  if (!isValid) {
+    return res.json({ valid: false, word: upperWord, points: 0 });
+  }
+
+  // Record the word server-side
+  const result = await recordWord(sessionId, upperWord, points);
+  if (!result.success) {
+    // Word already found in this session
+    return res.json({ valid: false, word: upperWord, error: result.error });
+  }
+
+  res.json({ valid: true, word: upperWord, points, sessionScore: result.sessionScore });
 });
 
 // Get all valid words for a set of letters (for end of round reveal)
-app.post('/api/solutions', gameLimiter, validate(solutionsSchema), (req, res) => {
-  const { letters } = req.validated;
-  // letters is an array, getAllValidWords expects a string
-  const words = getAllValidWords(letters.join(''));
+app.post('/api/solutions', gameLimiter, validate(solutionsSchema), async (req, res) => {
+  const { sessionId } = req.validated;
+
+  // Get session to retrieve letters
+  const session = await getSession(sessionId);
+  if (!session) {
+    return res.status(400).json({ error: 'Invalid or expired session' });
+  }
+
+  const words = getAllValidWords(session.letters.join(''));
   res.json({ words });
 });
 
@@ -204,17 +299,25 @@ app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
   }
 });
 
-// Submit a score (requires auth)
+// Submit a score (requires auth and valid session)
 app.post('/api/scores', scoreLimiter, authMiddleware, validate(scoreSchema), async (req, res) => {
-  const { score, level, wordsFound, gameMode } = req.validated;
+  const { sessionId } = req.validated;
   const userId = req.user.userId; // From JWT token, not request body
+
+  // Session is required - no legacy fallback to prevent score tampering
+  const summary = await endSession(sessionId);
+  if (!summary) {
+    return res.status(400).json({ error: 'Invalid or expired game session' });
+  }
+
+  const { score, level, wordsFound, gameMode } = summary;
 
   try {
     const [result] = await db.execute(
       'INSERT INTO scores (user_id, score, level, words_found, game_mode) VALUES (?, ?, ?, ?, ?)',
       [userId, score, level, wordsFound, gameMode]
     );
-    res.json({ success: true, scoreId: result.insertId });
+    res.json({ success: true, scoreId: result.insertId, verified: true });
   } catch (error) {
     console.error('Score submission error:', error);
     res.status(500).json({ error: 'Failed to submit score' });
@@ -332,7 +435,8 @@ app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
       untimedGames,
       recentUsers,
       recentGames,
-      dictionarySize: dictionary.size
+      dictionarySize: dictionary.size,
+      activeSessions: await getSessionCount()
     });
   } catch (error) {
     console.error('Admin stats error:', error);
