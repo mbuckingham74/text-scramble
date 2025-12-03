@@ -272,6 +272,8 @@ app.post('/api/register', authLimiter, validate(registerSchema), async (req, res
       [username, passwordHash]
     );
     const token = generateToken(result.insertId, username);
+    res.cookie(USER_COOKIE_NAME, token, userCookieOptions);
+    // Return token in response for backward compatibility with non-browser clients
     res.json({ success: true, userId: result.insertId, username, token });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -304,11 +306,19 @@ app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
     }
 
     const token = generateToken(user.id, user.username);
+    res.cookie(USER_COOKIE_NAME, token, userCookieOptions);
+    // Return token in response for backward compatibility with non-browser clients
     res.json({ success: true, userId: user.id, username: user.username, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
+});
+
+// Logout (clear user JWT cookie)
+app.post('/api/logout', (req, res) => {
+  res.clearCookie(USER_COOKIE_NAME, { path: '/api' });
+  res.json({ success: true });
 });
 
 // Submit a score (requires auth and valid session)
@@ -399,6 +409,17 @@ const adminCookieOptions = {
   sameSite: isProduction ? 'strict' : 'lax',
   maxAge: ADMIN_SESSION_TTL_MS,
   path: '/api/admin'
+};
+
+// Cookie settings for user JWT (7 days, matching JWT_EXPIRES_IN)
+const USER_COOKIE_NAME = 'wordtwist_token';
+const USER_JWT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const userCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'strict' : 'lax',
+  maxAge: USER_JWT_TTL_MS,
+  path: '/api'
 };
 
 // Admin auth middleware - validates session cookie
