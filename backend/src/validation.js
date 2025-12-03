@@ -11,12 +11,12 @@ const loginSchema = z.object({
 });
 
 const validateWordSchema = z.object({
-  word: z.string().min(3).max(6).regex(/^[a-zA-Z]+$/),
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).length(6)
+  word: z.string().min(3).max(8).regex(/^[a-zA-Z]+$/),
+  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8)
 });
 
 const solutionsSchema = z.object({
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).length(6)
+  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8)
 });
 
 const scoreSchema = z.object({
