@@ -196,6 +196,88 @@ word-twist/
 - bcrypt password hashing (10 rounds)
 - Multi-proxy chain support (Cloudflare/NPM)
 
+<details>
+<summary><strong>How Rate Limiting Works</strong></summary>
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              REQUEST FLOW                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    User Request
+         │
+         ▼
+┌─────────────────┐
+│   Cloudflare    │  ◄── Adds X-Forwarded-For header with real IP
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Nginx Proxy    │  ◄── SSL termination, forwards to backend
+│    Manager      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         WORD TWIST BACKEND                                  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  app.set('trust proxy', true)                                        │  │
+│  │  ► Extracts real client IP from X-Forwarded-For chain                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  RATE LIMITER MIDDLEWARE                                             │  │
+│  │                                                                      │  │
+│  │  For each request:                                                   │  │
+│  │  1. Get client IP                                                    │  │
+│  │  2. Build key: "wordtwist:game:192.168.1.1"                         │  │
+│  │  3. Check Redis for current count                                    │  │
+│  │  4. If under limit → increment & allow                               │  │
+│  │  5. If over limit → return 429 "Too Many Requests"                   │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                          │                   │                              │
+│              ┌───────────┘                   └───────────┐                  │
+│              │ Redis Available                Redis Down │                  │
+│              ▼                                          ▼                   │
+│  ┌─────────────────────┐                  ┌─────────────────────┐          │
+│  │   REDIS STORE       │                  │   MEMORY STORE      │          │
+│  │   (Persistent)      │                  │   (Fallback)        │          │
+│  └─────────────────────┘                  └─────────────────────┘          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           REDIS (Database 1)                                │
+│                                                                             │
+│  Keys stored with auto-expiry:                                              │
+│                                                                             │
+│  wordtwist:auth:192.168.1.1     → { count: 3, resetTime: ... }             │
+│  wordtwist:game:192.168.1.1     → { count: 47, resetTime: ... }            │
+│  wordtwist:score:192.168.1.1    → { count: 2, resetTime: ... }             │
+│  wordtwist:general:192.168.1.1  → { count: 15, resetTime: ... }            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         RATE LIMITS                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Endpoint Type        Limit             Window      Key Prefix              │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  Auth (login/reg)     10 requests       15 min      wordtwist:auth:         │
+│  Game (puzzle)        300 requests      1 min       wordtwist:game:         │
+│  Score submit         20 requests       1 min       wordtwist:score:        │
+│  General (other)      200 requests      1 min       wordtwist:general:      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+</details>
+
 ---
 
 ## Contributing
