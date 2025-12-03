@@ -117,12 +117,14 @@ The following environment variables are now used:
 - Removed unused `/solutions` API call
 - Fixed `showMessage` timeout cleanup on unmount
 - Added proper dependency array to keyboard listener effect
-- Dockerfile now uses `package-lock.json` with `npm ci` for reproducible builds
+- Dockerfile now uses `package-lock.json` with `npm ci --legacy-peer-deps` for reproducible builds
 
 ## Deployment Notes
 
 1. Create `.env` file on server with `JWT_SECRET` and `ADMIN_SESSION_SECRET` (use `openssl rand -base64 32` to generate each)
 2. Existing users will need to log in again to get a JWT cookie
 3. Old sessions (just `userId` in localStorage) will not work for score submission
-4. Admin credentials should be set via `ADMIN_USER` and `ADMIN_PASSWORD` environment variables
+4. Admin credentials should be set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables
 5. Run `npm test` in backend to verify constants are in sync between frontend/backend
+6. Redis is used for rate limiting with graceful fallback to memory if unavailable
+7. Rate limiter lazily initializes Redis connection to prevent startup crashes
