@@ -810,12 +810,21 @@ function App() {
                 <li>Press <kbd>Space</kbd> to shuffle</li>
                 <li>Press <kbd>Backspace</kbd> to delete</li>
                 <li>Press <kbd>Tab</kbd> to clear</li>
-                <li>Find a 6-letter word to advance!</li>
+                <li>Find a full-length word to advance!</li>
                 {!user && <li><em>Login to save your scores!</em></li>}
               </ul>
             </div>
 
-            <div className="menu-leaderboards">
+            <div className="instructions">
+              <h3>Difficulty</h3>
+              <ul>
+                <li><strong>Levels 1-5:</strong> 6 letters</li>
+                <li><strong>Levels 6-10:</strong> 7 letters</li>
+                <li><strong>Levels 11+:</strong> 8 letters</li>
+              </ul>
+              <p className="difficulty-note">Find longer words for more points!</p>
+            </div>
+
             <div className="menu-leaderboard">
               <h2>Timed</h2>
               {leaderboard.timed.length === 0 ? (
@@ -832,6 +841,7 @@ function App() {
                 </ol>
               )}
             </div>
+
             <div className="menu-leaderboard">
               <h2>Untimed</h2>
               {leaderboard.untimed.length === 0 ? (
@@ -848,7 +858,6 @@ function App() {
                 </ol>
               )}
             </div>
-          </div>
         </div>
       </div>
     </div>
