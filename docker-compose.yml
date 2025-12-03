@@ -13,6 +13,8 @@ services:
       - DB_NAME=wordtwist
       - JWT_SECRET=${JWT_SECRET:-change-this-in-production-use-a-long-random-string}
       - REDIS_URL=redis://authelia-redis:6379/1
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       - mysql
     networks:
