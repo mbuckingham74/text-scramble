@@ -812,6 +812,102 @@
   font-style: italic;
 }
 
+/* Leaderboard Achievement Modal */
+.leaderboard-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.leaderboard-modal {
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border-radius: 20px;
+  padding: 40px 50px;
+  text-align: center;
+  border: 3px solid #4a90d9;
+  box-shadow: 0 0 60px rgba(74, 144, 217, 0.4);
+  animation: modalPop 0.4s ease;
+  max-width: 400px;
+}
+
+@keyframes modalPop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.leaderboard-modal .modal-trophy {
+  font-size: 5rem;
+  margin-bottom: 10px;
+  animation: bounce 0.6s ease infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-10px); }
+}
+
+.leaderboard-modal h2 {
+  font-size: 2.2rem;
+  color: #2ed573;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(46, 213, 115, 0.5);
+}
+
+.leaderboard-modal .modal-message {
+  font-size: 1.2rem;
+  color: #c0c0c0;
+  margin-bottom: 20px;
+}
+
+.leaderboard-modal .modal-rank {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #4a90d9;
+  text-shadow: 0 0 30px rgba(74, 144, 217, 0.6);
+  margin-bottom: 10px;
+  font-family: 'Fredoka One', cursive;
+}
+
+.leaderboard-modal .modal-score {
+  font-size: 1.5rem;
+  color: #f5f5f0;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.leaderboard-modal .modal-mode {
+  font-size: 1rem;
+  color: #808080;
+  margin-bottom: 25px;
+}
+
+.leaderboard-modal .btn {
+  padding: 14px 40px;
+  font-size: 1.2rem;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .leaderboard-sidebar {

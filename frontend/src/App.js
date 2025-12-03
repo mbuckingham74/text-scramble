@@ -104,6 +104,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [leaderboard, setLeaderboard] = useState({ timed: [], untimed: [] });
   const [apiError, setApiError] = useState(''); // For surfacing API errors to users
+  const [leaderboardModal, setLeaderboardModal] = useState(null); // { rank: number, score: number } when player makes leaderboard
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
@@ -272,6 +273,7 @@ function App() {
     setTimedMode(timed);
     setScore(0);
     setLevel(1);
+    setLeaderboardModal(null); // Clear any previous leaderboard modal
     await fetchLeaderboard();
     await startNewRound(timed);
   }, [fetchLeaderboard, startNewRound]);
@@ -376,11 +378,36 @@ function App() {
       setGameState('roundEnd');
     } else {
       sounds.gameOver();
+      const { score, timedMode, user } = gameStateRef.current;
       await submitScore();
-      await fetchLeaderboard();
+
+      // Fetch updated leaderboard and check if player made it
+      try {
+        const data = await apiFetch(`${API_URL}/leaderboard`);
+        const updatedLeaderboard = {
+          timed: data.timed || [],
+          untimed: data.untimed || []
+        };
+        setLeaderboard(updatedLeaderboard);
+
+        // Check if this player's score is on the leaderboard
+        if (user && score > 0) {
+          const relevantBoard = timedMode ? updatedLeaderboard.timed : updatedLeaderboard.untimed;
+          const playerEntry = relevantBoard.find(
+            entry => entry.username === user.username && entry.score === score
+          );
+          if (playerEntry) {
+            const rank = relevantBoard.indexOf(playerEntry) + 1;
+            setLeaderboardModal({ rank, score });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      }
+
       setGameState('gameOver');
     }
-  }, [foundFullWord, submitScore, fetchLeaderboard]);
+  }, [foundFullWord, submitScore]);
 
   // Timer effect
   useEffect(() => {
@@ -722,6 +749,21 @@ function App() {
 
     return (
       <div className="app">
+        {leaderboardModal && (
+          <div className="leaderboard-modal-overlay" onClick={() => setLeaderboardModal(null)}>
+            <div className="leaderboard-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-trophy">🏆</div>
+              <h2>Congratulations!</h2>
+              <p className="modal-message">You made the leaderboard!</p>
+              <div className="modal-rank">#{leaderboardModal.rank}</div>
+              <p className="modal-score">{leaderboardModal.score.toLocaleString()} points</p>
+              <p className="modal-mode">{timedMode ? 'Timed' : 'Untimed'} Mode</p>
+              <button className="btn primary" onClick={() => setLeaderboardModal(null)}>
+                Awesome!
+              </button>
+            </div>
+          </div>
+        )}
         <div className="game-over">
           <h1>Game Over!</h1>
           <p className="reason">You need to find at least one 6-letter word to continue!</p>
