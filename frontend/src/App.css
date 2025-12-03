@@ -128,7 +128,7 @@
 /* Menu Leaderboard */
 .menu-leaderboard {
   width: 200px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   padding: 20px;
 }
@@ -190,7 +190,7 @@
 }
 
 .instructions {
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   padding: 25px;
   text-align: left;
@@ -279,7 +279,7 @@
 .game-header {
   display: flex;
   justify-content: space-around;
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 12px;
   padding: 15px 20px;
   margin-bottom: 15px;
@@ -339,7 +339,7 @@
 
 /* Word Display */
 .word-display {
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 12px;
   padding: 18px;
   margin-bottom: 15px;
@@ -364,7 +364,7 @@
 }
 
 .word-slot {
-  background: rgba(255, 255, 255, 0.05);
+  background: #16213e;
   padding: 6px 14px;
   border-radius: 6px;
   font-family: monospace;
@@ -482,7 +482,7 @@
 }
 
 .stats {
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 20px;
@@ -516,7 +516,7 @@
 }
 
 .all-words {
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 20px;
@@ -541,7 +541,7 @@
 .leaderboard-sidebar {
   width: 200px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 12px;
   padding: 15px;
 }
@@ -630,7 +630,7 @@
   font-size: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   color: white;
   font-family: 'Nunito', sans-serif;
 }
@@ -687,7 +687,7 @@
 
 .leaderboard-section table {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   border-collapse: collapse;
   overflow: hidden;
@@ -731,7 +731,7 @@
 }
 
 .leaderboard-list {
-  background: rgba(255, 255, 255, 0.05);
+  background: #1a1a2e;
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 20px;
