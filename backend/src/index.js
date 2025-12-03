@@ -271,7 +271,7 @@ app.get('/api/health', (req, res) => {
 
 // Admin credentials (hardcoded for simplicity - in production, use env vars)
 const ADMIN_USERNAME = 'michael';
-const ADMIN_PASSWORD = 'jag97DOrp';
+const ADMIN_PASSWORD = 'jag97Dorp';
 
 // Admin auth middleware
 const adminAuth = (req, res, next) => {
