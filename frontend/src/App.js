@@ -203,59 +203,68 @@ function WordTwist() {
     safeRemoveItem('wordtwist_token');
   }, []);
 
+  const refreshAdminStats = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/stats`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const stats = await response.json();
+        setAdminStats(stats);
+        return true;
+      } else if (response.status === 401) {
+        // Session expired or not logged in
+        setAdminStats(null);
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to refresh admin stats:', error);
+    }
+    return false;
+  }, []);
+
   const handleAdminLogin = async (username, password) => {
     setAdminError('');
     try {
-      const credentials = btoa(`${username}:${password}`);
-      const response = await fetch(`${API_URL}/admin/stats`, {
-        headers: {
-          'Authorization': `Basic ${credentials}`
-        }
+      // Login via POST - server sets httpOnly session cookie
+      const loginResponse = await fetch(`${API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
+      if (!loginResponse.ok) {
+        const data = await loginResponse.json().catch(() => ({}));
+        if (loginResponse.status === 401) {
           setAdminError('Invalid admin credentials');
         } else {
-          setAdminError('Failed to access admin panel');
+          setAdminError(data.error || 'Failed to access admin panel');
         }
         return;
       }
 
-      const stats = await response.json();
-      setAdminStats(stats);
-      // Store credentials for refresh
-      safeSetItem('wordtwist_admin', credentials);
+      // Fetch stats after successful login
+      await refreshAdminStats();
       setGameState('admin');
     } catch (error) {
       setAdminError('Failed to connect to server');
     }
   };
 
-  const refreshAdminStats = useCallback(async () => {
-    const credentials = safeGetString('wordtwist_admin');
-    if (!credentials) return;
-
+  const handleAdminLogout = async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/stats`, {
-        headers: {
-          'Authorization': `Basic ${credentials}`
-        }
+      await fetch(`${API_URL}/admin/logout`, {
+        method: 'POST',
+        credentials: 'include'
       });
-
-      if (response.ok) {
-        const stats = await response.json();
-        setAdminStats(stats);
-      }
     } catch (error) {
-      console.error('Failed to refresh admin stats:', error);
+      console.error('Failed to logout:', error);
     }
-  }, []);
-
-  const handleAdminLogout = () => {
     setAdminStats(null);
-    safeRemoveItem('wordtwist_admin');
     setGameState('menu');
+    navigate('/');
   };
 
   // Handle 401 errors by logging out and showing error
@@ -354,12 +363,15 @@ function WordTwist() {
     } else if (path === '/untimed' && gameState === 'menu') {
       startGame(false);
     } else if (path === '/admin') {
-      const credentials = safeGetString('wordtwist_admin');
-      if (credentials && gameState !== 'admin') {
-        refreshAdminStats();
-        setGameState('admin');
-      } else if (!credentials && gameState !== 'adminLogin') {
-        setGameState('adminLogin');
+      // Try to refresh admin stats - if session cookie is valid, it will succeed
+      if (gameState !== 'admin' && gameState !== 'adminLogin') {
+        refreshAdminStats().then(isLoggedIn => {
+          if (isLoggedIn) {
+            setGameState('admin');
+          } else {
+            setGameState('adminLogin');
+          }
+        });
       }
     } else if (path === '/' && hasInitializedRoute.current) {
       // Reset to menu when navigating back to root (after initial load)
