@@ -33,6 +33,7 @@ word-twist/
 │   │   ├── index.js        # Express API endpoints
 │   │   ├── auth.js         # JWT token generation & middleware
 │   │   ├── validation.js   # Zod schemas for input validation
+│   │   ├── session.js      # Redis-backed game sessions for score verification
 │   │   ├── game.js         # Puzzle generation & word validation
 │   │   ├── game.test.js    # Automated tests (run with npm test)
 │   │   ├── dictionary.js   # Word dictionary loader
@@ -252,3 +253,11 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
       - Puzzle generation returns correct letter counts per level
       - Word validation (accepts valid, rejects invalid/short/unavailable letters)
       - getAllValidWords returns expected results
+13. **Server-side score verification** (Dec 2024):
+    - Game sessions tracked server-side with `sessionId` returned from `/api/puzzle`
+    - Word validation uses server-stored letters (client can't provide arbitrary letters)
+    - Score submission requires valid session - no client-side score tampering possible
+    - Sessions stored in Redis with 2-hour TTL, memory fallback if Redis unavailable
+    - Atomic word recording via Lua script prevents race conditions (concurrent duplicate submissions)
+    - `/api/validate` and `/api/scores` require sessionId; `/api/solutions` uses session letters
+    - Frontend updated to pass sessionId on all game operations
