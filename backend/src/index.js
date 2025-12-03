@@ -14,9 +14,14 @@ const { initSessionStore, setRedisReady, createSession, getSession, recordWord, 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - set to 2 for the two proxies in our chain (Cloudflare -> NPM -> app)
-// This tells Express to use the 2nd-from-end IP in X-Forwarded-For as the client IP
-app.set('trust proxy', 2);
+// Trust proxy - configurable for different proxy chains
+// Default: 2 for Cloudflare -> NPM -> app
+// Set TRUST_PROXY_HOPS to match your proxy chain depth (0 to disable)
+const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
+const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined && !isNaN(parsedHops)
+  ? parsedHops
+  : 2;
+app.set('trust proxy', trustProxyHops);
 
 // Redis client for rate limiting (with fallback to memory store)
 let redisClient = null;
@@ -55,11 +60,15 @@ if (process.env.REDIS_URL) {
 }
 
 // CORS - restrict to known origins
-const allowedOrigins = [
+// Set CORS_ORIGINS env var to override (comma-separated list)
+const defaultOrigins = [
   'https://twist.tachyonfuture.com',
   'http://localhost:3000',
   'http://localhost:3001'
 ];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : defaultOrigins;
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -70,7 +79,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    callback(new Error('Not allowed by CORS'));
+    // Return false for disallowed origins (clean denial, no error)
+    callback(null, false);
   },
   credentials: true
 }));
