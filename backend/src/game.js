@@ -88,14 +88,18 @@ function generatePuzzle() {
     wordsByLength[len].push(word);
   });
 
-  // Sort each group alphabetically
+  // Sort each group alphabetically, then cap at 12 words per length
+  const MAX_WORDS_PER_LENGTH = 12;
+  let cappedTotalWords = 0;
   Object.keys(wordsByLength).forEach(len => {
     wordsByLength[len].sort();
+    wordsByLength[len] = wordsByLength[len].slice(0, MAX_WORDS_PER_LENGTH);
+    cappedTotalWords += wordsByLength[len].length;
   });
 
   return {
     letters: letters,
-    totalWords: validWords.length,
+    totalWords: cappedTotalWords,
     wordsByLength: wordsByLength,
     hasFullWord: validWords.some(w => w.length === 6)
   };

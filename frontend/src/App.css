@@ -418,12 +418,6 @@
   margin-bottom: 8px;
 }
 
-.word-group h3 .word-count {
-  font-size: 0.85rem;
-  color: #808080;
-  font-weight: normal;
-}
-
 .word-slots {
   display: flex;
   flex-wrap: wrap;
@@ -443,15 +437,6 @@
 .word-slot.found {
   background: rgba(46, 213, 115, 0.2);
   color: #2ed573;
-}
-
-.word-slot.more-indicator {
-  background: transparent;
-  border: 1px dashed #4a90d9;
-  color: #4a90d9;
-  font-family: inherit;
-  letter-spacing: normal;
-  font-size: 0.85rem;
 }
 
 .word-slot.missed {

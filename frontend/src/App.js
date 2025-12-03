@@ -526,50 +526,29 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Render word slots (capped at 12 per length to keep UI manageable)
+  // Render word slots
   const renderWordSlots = () => {
-    const slots = [];
     const lengths = Object.keys(wordsByLength).sort((a, b) => a - b);
-    const MAX_SLOTS_PER_LENGTH = 12;
 
-    for (const length of lengths) {
-      const allWords = wordsByLength[length];
-      const totalCount = allWords.length;
-
-      // Get found words for this length
-      const foundInLength = allWords.filter(w => foundWords.includes(w.toUpperCase()));
-      const foundCount = foundInLength.length;
-
-      // Display: found words first, then empty slots up to MAX_SLOTS_PER_LENGTH
-      const displayWords = allWords.slice(0, MAX_SLOTS_PER_LENGTH);
-      const hasMore = totalCount > MAX_SLOTS_PER_LENGTH;
-
-      slots.push(
-        <div key={length} className="word-group">
-          <h3>{length} Letters {hasMore && <span className="word-count">({foundCount}/{totalCount})</span>}</h3>
-          <div className="word-slots">
-            {displayWords.map((word, idx) => {
-              const upperWord = word.toUpperCase();
-              const isFound = foundWords.includes(upperWord);
-              return (
-                <div
-                  key={idx}
-                  className={`word-slot ${isFound ? 'found' : ''}`}
-                >
-                  {isFound ? upperWord : word.replace(/./g, '_')}
-                </div>
-              );
-            })}
-            {hasMore && (
-              <div className="word-slot more-indicator">
-                +{totalCount - MAX_SLOTS_PER_LENGTH} more
+    return lengths.map(length => (
+      <div key={length} className="word-group">
+        <h3>{length} Letters</h3>
+        <div className="word-slots">
+          {wordsByLength[length].map((word, idx) => {
+            const upperWord = word.toUpperCase();
+            const isFound = foundWords.includes(upperWord);
+            return (
+              <div
+                key={idx}
+                className={`word-slot ${isFound ? 'found' : ''}`}
+              >
+                {isFound ? upperWord : word.replace(/./g, '_')}
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
-      );
-    }
-    return slots;
+      </div>
+    ));
   };
 
   // Render end screen word list (shows all words in slots with found/missed styling)
