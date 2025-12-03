@@ -5,19 +5,23 @@ A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
 ## Tech Stack
 
 - **Frontend**: React (Create React App), served via Nginx
-- **Backend**: Node.js/Express API
+- **Backend**: Node.js/Express API with JWT authentication
 - **Database**: MySQL 8
 - **Deployment**: Docker Compose on tachyonfuture.com server
 - **SSL**: Nginx Proxy Manager (NPM) handles SSL termination
+- **Analytics**: Matomo (site ID 10 on matomo.tachyonfuture.com)
 
 ## Project Structure
 
 ```
 word-twist/
 ├── frontend/
+│   ├── public/
+│   │   └── index.html      # HTML template with Matomo tracking
 │   ├── src/
 │   │   ├── App.js          # Main game component (all game logic & screens)
 │   │   ├── App.css         # All styling
+│   │   ├── index.css       # Base styles (pure black background)
 │   │   ├── sounds.js       # Sound effects module
 │   │   └── index.js        # Entry point
 │   ├── nginx.conf          # Nginx config for API proxying
@@ -26,13 +30,18 @@ word-twist/
 ├── backend/
 │   ├── src/
 │   │   ├── index.js        # Express API endpoints
+│   │   ├── auth.js         # JWT token generation & middleware
+│   │   ├── validation.js   # Zod schemas for input validation
 │   │   ├── game.js         # Puzzle generation & word validation
-│   │   ├── db.js           # MySQL connection pool
+│   │   ├── dictionary.js   # Word dictionary loader
+│   │   ├── db.js           # MySQL connection pool (env var required in prod)
 │   │   └── words.txt       # Scrabble dictionary (29,771 words, 3-6 letters)
 │   ├── init.sql            # Database schema
 │   ├── Dockerfile
 │   └── package.json
 ├── docker-compose.yml      # Orchestrates frontend, backend, mysql
+├── .env                    # Environment variables (JWT_SECRET) - not in git
+├── security-fixes.md       # Documentation of security improvements
 └── CLAUDE_CONTEXT.md       # This file
 ```
 
@@ -40,35 +49,58 @@ word-twist/
 
 ### Frontend - App.js
 Single-file React app with all game states:
-- `menu` - Main menu with leaderboard sidebar
+- `menu` - Main menu with dual leaderboards (Timed & Untimed)
 - `playing` - Active gameplay with letter tiles, word slots, timer
 - `roundEnd` - Level complete screen
 - `gameOver` - Shows missed words, final score, leaderboard rank
 - `login` / `register` - Auth screens
-- `leaderboard` - Full leaderboard table view
+- `leaderboard` - Full leaderboard table view (both modes)
 
-Key state: `letters`, `foundWords`, `wordsByLength`, `score`, `level`, `timeLeft`, `user`, `leaderboard`
+Key state: `letters`, `foundWords`, `wordsByLength`, `score`, `level`, `timeLeft`, `user`, `token`, `leaderboard` (has `.timed` and `.untimed` arrays)
+
+Uses refs (`gameStateRef`, `messageTimeoutRef`) to avoid stale closures in callbacks.
 
 ### Backend - index.js
 Express API endpoints:
 - `GET /api/puzzle` - Generate new 6-letter puzzle
-- `POST /api/validate` - Check if word is valid
+- `POST /api/validate` - Check if word is valid (Zod validated)
 - `POST /api/solutions` - Get all valid words for letters
-- `POST /api/register` / `POST /api/login` - Auth
-- `POST /api/scores` - Submit score
-- `GET /api/leaderboard` - Top 10 scores
-- `GET /api/scores/:userId` - User's scores
+- `POST /api/register` / `POST /api/login` - Auth (returns JWT token)
+- `POST /api/scores` - Submit score (requires JWT auth)
+- `GET /api/leaderboard` - Top 10 scores for each mode (`{ timed: [], untimed: [] }`)
+- `GET /api/scores/me` - Current user's scores (requires auth)
+- `GET /api/health` - Health check
 
-### Backend - game.js
-- `generatePuzzle()` - Picks random 6-letter word, finds all valid subwords
-- `validateWord(word, letters)` - Checks word against dictionary
-- `getAllValidWords(letters)` - Returns all valid 3-6 letter words
+### Backend - auth.js
+- `generateToken(userId, username)` - Creates JWT (7 day expiry)
+- `verifyToken(token)` - Validates JWT
+- `authMiddleware` - Express middleware for protected routes
+
+### Backend - validation.js
+Zod schemas for all inputs:
+- `registerSchema` / `loginSchema` - username (3-20 chars), password (4-100 chars)
+- `validateWordSchema` - word (3-6 letters), letters (array of 6)
+- `solutionsSchema` - letters array
+- `scoreSchema` - score (0-1M), level (1-1000), wordsFound (0-500), gameMode enum
 
 ### Database Schema (init.sql)
 ```sql
 users: id, username, password_hash, created_at
-scores: id, user_id, score, level, words_found, game_mode, created_at
+scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'), created_at
 ```
+
+## Environment Variables
+
+| Variable | Required in Prod | Description |
+|----------|------------------|-------------|
+| `JWT_SECRET` | Yes | Secret key for signing JWT tokens |
+| `DB_HOST` | Yes | MySQL host |
+| `DB_USER` | Yes | MySQL username |
+| `DB_PASSWORD` | Yes | MySQL password |
+| `DB_NAME` | Yes | MySQL database name |
+| `NODE_ENV` | Recommended | Set to `production` for prod |
+
+Generate JWT secret: `openssl rand -base64 32`
 
 ## Deployment Commands
 
@@ -94,18 +126,50 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 
 ## Design Details
 
-- **Color scheme**: Dark blue background (#1a1a2e), soft white text (#f5f5f0), blue accents (#4a90d9)
-- **Fonts**: Nunito (body), Fredoka One (letter tiles)
+- **Background**: Pure black (#000000)
+- **Container boxes**: Dark blue (#1a1a2e)
+- **Word slots**: Slightly lighter blue (#16213e)
+- **Text**: Soft white (#f5f5f0)
+- **Accents**: Blue (#4a90d9)
+- **Success messages**: Green (#2ed573)
+- **Error messages**: Red (#ff4757)
+- **Fonts**: Nunito (body), Fredoka One (letter tiles, headings)
 - **Letter tiles**: 72x72px with 3D shadow effect
-- **Leaderboard**: Shows on menu (sidebar), during game (sidebar), game over screen
+- **Sound toggle**: Fixed position, upper right corner
+
+## UI Features
+
+- **Leaderboards**: Separate for Timed and Untimed modes
+  - Menu screen: Both boards side-by-side
+  - Game screen: Sidebar shows current mode's board
+  - Leaderboard screen: Full tables for both modes
+- **Message overlay**: Centered pop-in animation for points/errors (doesn't shift layout)
 - **Found words**: Green slots
 - **Missed words**: Red slots (shown on game over)
+- **All Words section**: Shows all possible words at game over (max-height: 400px, scrollable)
 
-## Recent Changes (as of Dec 2024)
+## Security Features (Dec 2024)
 
-- Official Scrabble dictionary (no proper nouns/acronyms)
-- Leaderboard visible on main menu (side-by-side layout)
-- Leaderboard sidebar during gameplay
-- Date column on all leaderboard views
-- Missed words shown in red on game over
-- Enlarged UI elements for better visibility
+- JWT authentication for score submission
+- Rate limiting: 10 auth attempts per 15 min, 100 general requests per min
+- CORS restricted to twist.tachyonfuture.com and localhost
+- Zod input validation on all endpoints
+- Environment variables required in production (no hardcoded credentials)
+- Password hashing with bcrypt (10 rounds)
+
+## Recent Changes (Dec 2024)
+
+1. **Security overhaul**: JWT auth, rate limiting, input validation, CORS lockdown
+2. **Separate leaderboards**: Timed and Untimed modes have independent top 10s
+3. **UI improvements**:
+   - Pure black background with solid blue container boxes
+   - Sound toggle moved to fixed position (upper right)
+   - Message overlay (centered pop-in) instead of pushing content
+   - All Words section height increased to 400px
+4. **Analytics**: Matomo tracking added (site ID 10)
+5. **Bug fixes**:
+   - Stale closure fix using refs for game state
+   - Safe localStorage parsing with try/catch
+   - Proper API error handling
+   - Duplicate word detection (always uppercase)
+   - Timeout cleanup on unmount
