@@ -12,9 +12,9 @@ const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreS
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - set to true to trust the full X-Forwarded-For chain
-// This works for Cloudflare -> NPM -> app or any multi-proxy setup
-app.set('trust proxy', true);
+// Trust proxy - set to 2 for the two proxies in our chain (Cloudflare -> NPM -> app)
+// This tells Express to use the 2nd-from-end IP in X-Forwarded-For as the client IP
+app.set('trust proxy', 2);
 
 // Redis client for rate limiting (with fallback to memory store)
 let redisClient = null;
