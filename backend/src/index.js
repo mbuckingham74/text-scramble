@@ -10,6 +10,9 @@ const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreS
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - required for rate limiting behind Nginx Proxy Manager
+app.set('trust proxy', 1);
+
 // CORS - restrict to known origins
 const allowedOrigins = [
   'https://twist.tachyonfuture.com',
