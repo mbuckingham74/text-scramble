@@ -696,6 +696,12 @@ function App() {
                   <div className="stat-label">Recent Games (7 days)</div>
                 </div>
               </div>
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card">
+                  <div className="stat-value">{adminStats.dictionarySize?.toLocaleString() || '—'}</div>
+                  <div className="stat-label">Words in Dictionary</div>
+                </div>
+              </div>
             </>
           )}
           <div className="admin-buttons">

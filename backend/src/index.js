@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { createClient } = require('redis');
 const { generatePuzzle, validateWord, getAllValidWords } = require('./game');
+const dictionary = require('./dictionary');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
@@ -329,7 +330,8 @@ app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
       timedGames,
       untimedGames,
       recentUsers,
-      recentGames
+      recentGames,
+      dictionarySize: dictionary.size
     });
   } catch (error) {
     console.error('Admin stats error:', error);
