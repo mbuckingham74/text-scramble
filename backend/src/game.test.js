@@ -5,48 +5,17 @@
 
 const assert = require('assert');
 const dictionary = require('./dictionary');
-const { generatePuzzle, validateWord, getAllValidWords } = require('./game');
+const {
+  generatePuzzle,
+  validateWord,
+  getAllValidWords,
+  puzzleWords6,
+  puzzleWords7,
+  puzzleWords8
+} = require('./game');
 
 // Helper to get letter signature (sorted letters)
 const getSignature = (word) => word.toUpperCase().split('').sort().join('');
-
-// Import puzzle word lists for testing
-const puzzleWords6 = [
-  'ALMOST', 'BASKET', 'CASTLE', 'DANGER', 'EAGLES', 'FABRIC', 'HANDLE',
-  'ISLAND', 'JANGLE', 'KISMET', 'LAMENT', 'NACHOS', 'OBTUSE', 'PALACE',
-  'QUARTS', 'RAISIN', 'SAILOR', 'TABLES', 'UNSAFE', 'VALISE', 'WALNUT', 'YANKED',
-  'ZEALOT', 'BRANCH', 'CLAMPS', 'DREAMS', 'ELFINS', 'FLAUNT', 'GRAINS', 'HASTEN',
-  'INSERT', 'JOINTS', 'KELVIN', 'LOATHE', 'NOSIER', 'OPERAS', 'PLANET',
-  'QUIVER', 'REASON', 'TANGLE', 'UNITES', 'VARIES', 'WASTER', 'YOGURT',
-  'STRIPE', 'MASTER', 'LISTEN', 'HEARTS', 'TRADES', 'BREAST',
-  'CASTER', 'CREATE', 'ORIENT', 'LASTED', 'PETALS', 'ALERTS',
-  'RENTAL', 'MERITS', 'STRIDE', 'SATIRE', 'SORTIE'
-];
-
-const puzzleWords7 = [
-  'ALMONDS', 'ASTRIDE', 'BANTERS', 'BLASTER', 'CABINET', 'CARPETS', 'COASTER',
-  'CREDITS', 'DANCERS', 'DETAINS', 'DRASTIC', 'EASTERN', 'ELASTIC',
-  'ENTRAPS', 'ESCAPED', 'FAINTED', 'FLOATER', 'GARDENS', 'GRANITE', 'HALTERS',
-  'HASTIER', 'HEALING', 'LANTERN', 'LATRINE', 'LEADING',
-  'LOADING', 'MARVELS', 'MARSHAL', 'MASTERS', 'MATCHER', 'NASTIER',
-  'ORDAINS', 'PAINTER', 'PATROLS', 'PLASTER', 'PLANTED', 'PRATTLE', 'RATIONS',
-  'READING', 'RECITAL', 'REMAINS', 'REPLANT', 'SALTIER',
-  'SEATING', 'SHOUTED', 'SLACKER', 'SLANDER', 'SNORTED', 'SPATULA',
-  'STACKER', 'STEWARD', 'STORAGE', 'STRANGE',
-  'THREADS', 'TOASTED', 'TREASON', 'TRIPLED', 'TRUSTED'
-];
-
-const puzzleWords8 = [
-  'ADMIRALS', 'ASTEROID', 'BANISTER', 'CHAPTERS',
-  'CITADELS', 'CLIMATES', 'COASTERS', 'EASTWARD', 'ENTRAILS', 'FINAGLED',
-  'FLOATING', 'GRADIENT', 'GRANITES', 'GYRATION', 'HAIRIEST', 'HANDLING',
-  'HASTENED', 'LANTERNS', 'MALTSTER', 'MASTERED', 'MEDIATOR',
-  'MIGRANTS', 'PAINTERS', 'PARTINGS', 'PASTURED', 'PLASTERS', 'REACTING',
-  'READOUTS', 'REDCOATS', 'REPLANTS', 'RETAINED', 'ROUNDEST',
-  'SALARIED', 'SCANTIER', 'SEDATION', 'SLANDERS', 'SMELTING', 'STAMPEDE',
-  'STEADING', 'STRAINED', 'STRANGLE', 'THATCHES', 'TOASTING',
-  'TREASONS', 'TRIANGLE'
-];
 
 let passed = 0;
 let failed = 0;
@@ -102,6 +71,22 @@ test('No duplicate signatures in 8-letter puzzle words', () => {
   const sigs = puzzleWords8.map(getSignature);
   const dupes = sigs.filter((s, i) => sigs.indexOf(s) !== i);
   assert.strictEqual(dupes.length, 0, `Duplicate signatures: ${dupes.join(', ')}`);
+});
+
+// Test: All puzzle words have correct length
+test('All 6-letter puzzle words are 6 letters', () => {
+  const wrong = puzzleWords6.filter(w => w.length !== 6);
+  assert.strictEqual(wrong.length, 0, `Wrong length: ${wrong.join(', ')}`);
+});
+
+test('All 7-letter puzzle words are 7 letters', () => {
+  const wrong = puzzleWords7.filter(w => w.length !== 7);
+  assert.strictEqual(wrong.length, 0, `Wrong length: ${wrong.join(', ')}`);
+});
+
+test('All 8-letter puzzle words are 8 letters', () => {
+  const wrong = puzzleWords8.filter(w => w.length !== 8);
+  assert.strictEqual(wrong.length, 0, `Wrong length: ${wrong.join(', ')}`);
 });
 
 // Test: generatePuzzle returns correct structure for level 1 (6 letters)

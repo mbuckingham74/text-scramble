@@ -4,17 +4,17 @@ const dictionary = require('./dictionary');
 // Each list is deduped by letter signature to ensure uniform puzzle variety
 // (anagrams like LISTEN/SILENT share the same signature, so only one is kept)
 
-// 6-letter words (levels 1-5) - 61 unique signatures
+// 6-letter words (levels 1-5) - 64 unique signatures
 const puzzleWords6 = [
   'ALMOST', 'BASKET', 'CASTLE', 'DANGER', 'EAGLES', 'FABRIC', 'HANDLE',
-  'ISLAND', 'JANGLE', 'KISMET', 'LAMENT', 'NACHOS', 'OBTUSE', 'PALACE',
+  'ISLAND', 'JANGLE', 'KISMET', 'LAMENT', 'MANGLE', 'NACHOS', 'OBTUSE', 'PALACE',
   'QUARTS', 'RAISIN', 'SAILOR', 'TABLES', 'UNSAFE', 'VALISE', 'WALNUT', 'YANKED',
   'ZEALOT', 'BRANCH', 'CLAMPS', 'DREAMS', 'ELFINS', 'FLAUNT', 'GRAINS', 'HASTEN',
   'INSERT', 'JOINTS', 'KELVIN', 'LOATHE', 'NOSIER', 'OPERAS', 'PLANET',
   'QUIVER', 'REASON', 'TANGLE', 'UNITES', 'VARIES', 'WASTER', 'YOGURT',
   'STRIPE', 'MASTER', 'LISTEN', 'HEARTS', 'TRADES', 'BREAST',
   'CASTER', 'CREATE', 'ORIENT', 'LASTED', 'PETALS', 'ALERTS',
-  'RENTAL', 'MERITS', 'STRIDE', 'SATIRE', 'SORTIE'
+  'RENTAL', 'MERITS', 'STRIDE', 'CARIES', 'SATIRE', 'ARIOSE', 'SORTIE'
 ];
 
 // 7-letter words (levels 6-10) - 58 unique signatures
@@ -190,4 +190,12 @@ function canFormWord(word, letters) {
   return true;
 }
 
-module.exports = { generatePuzzle, validateWord, getAllValidWords };
+module.exports = {
+  generatePuzzle,
+  validateWord,
+  getAllValidWords,
+  // Exported for testing
+  puzzleWords6,
+  puzzleWords7,
+  puzzleWords8
+};
