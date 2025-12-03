@@ -103,6 +103,11 @@
     0 0 20px rgba(74, 144, 217, 0.3);
 }
 
+.menu-controls {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
 .menu-content {
   display: flex;
   gap: 40px;
