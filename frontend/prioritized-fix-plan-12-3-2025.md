@@ -6,20 +6,20 @@ Issues identified during codebase review, prioritized by severity and grouped in
 
 ## Progress Tracker
 
-### PR #1: Critical Crash Fix ✅
-- [x] **Fix `startGame` reference before initialization** (Critical)
+### PR #1: Critical Crash Fix (PR Ready)
+- [ ] **Fix `startGame` reference before initialization** (Critical)
   - `useEffect` at lines 288-312 references `startGame` before it's defined at line 364
   - Causes "Cannot access 'startGame' before initialization" on first render
   - **PR:** https://github.com/mbuckingham74/text-scramble/pull/5
 
-### PR #2: Build Reproducibility ✅
-- [x] **Fix Dockerfile to use package-lock.json and npm ci**
+### PR #2: Build Reproducibility (PR Ready)
+- [ ] **Fix Dockerfile to use package-lock.json and npm ci**
   - Currently runs `npm install` without lock file
   - Container builds can drift with different transitive dependency versions
   - **PR:** https://github.com/mbuckingham74/text-scramble/pull/6
 
-### PR #3: Auth Hardening - Admin ✅
-- [x] **Replace admin Basic auth with session-based auth**
+### PR #3: Auth Hardening - Admin (PR Ready)
+- [ ] **Replace admin Basic auth with session-based auth**
   - Currently base64-encodes username:password in localStorage
   - Persists credentials indefinitely, exposes to XSS
   - Sends password on every request
