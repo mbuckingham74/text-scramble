@@ -60,7 +60,6 @@ This document describes the security improvements made to the Word Twist backend
 - `backend/src/session.js` - Admin session management with httpOnly cookies
 - `frontend/src/constants.js` - Frontend copy of gameplay constants (ES modules)
 - `frontend/src/components/` - Reusable UI components (WordSlots, LeaderboardList, LeaderboardTable, LetterTile)
-- `.env` - Environment variables (not committed to git)
 
 ## New Dependencies
 
@@ -121,10 +120,11 @@ The following environment variables are now used:
 
 ## Deployment Notes
 
-1. Create `.env` file on server with `JWT_SECRET` and `ADMIN_SESSION_SECRET` (use `openssl rand -base64 32` to generate each)
-2. Existing users will need to log in again to get a JWT cookie
-3. Old sessions (just `userId` in localStorage) will not work for score submission
-4. Admin credentials should be set via `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables
-5. Run `npm test` in backend to verify constants are in sync between frontend/backend
-6. Redis is used for rate limiting with graceful fallback to memory if unavailable
-7. Rate limiter lazily initializes Redis connection to prevent startup crashes
+1. Set `JWT_SECRET` and `ADMIN_SESSION_SECRET` environment variables (use `openssl rand -base64 32` to generate each)
+2. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables for admin access
+3. Environment variables can be set in `docker-compose.yml`, host environment, or Docker secrets
+4. Existing users will need to log in again to get a JWT cookie
+5. Old sessions (just `userId` in localStorage) will not work for score submission
+6. Run `npm test` in backend to verify constants are in sync between frontend/backend
+7. Redis is used for rate limiting with graceful fallback to memory if unavailable
+8. Rate limiter lazily initializes Redis connection to prevent startup crashes
