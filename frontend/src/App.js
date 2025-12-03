@@ -944,6 +944,7 @@ function App() {
       <div className="game-layout">
         <div className="game">
           <header className="game-header">
+            <h1 className="game-logo">Word Twist</h1>
             <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
               {soundEnabled ? '🔊' : '🔇'}
             </button>
