@@ -334,7 +334,7 @@
 
 .game-header {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   background: #1a1a2e;
   border-radius: 12px;
@@ -342,8 +342,14 @@
   margin-bottom: 15px;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .game-logo {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   color: #f5f5f0;
   margin: 0;
   text-shadow:
@@ -351,6 +357,11 @@
     1px -1px 0 #4a90d9,
     -1px 1px 0 #4a90d9,
     1px 1px 0 #4a90d9;
+}
+
+.header-stats {
+  display: flex;
+  gap: 30px;
 }
 
 .stat {

@@ -944,25 +944,29 @@ function App() {
       <div className="game-layout">
         <div className="game">
           <header className="game-header">
-            <h1 className="game-logo">Word Twist</h1>
-            <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
-              {soundEnabled ? '🔊' : '🔇'}
-            </button>
-            <div className="stat">
-              <span className="label">Level</span>
-              <span className="value">{level}</span>
+            <div className="header-left">
+              <h1 className="game-logo">Word Twist</h1>
+              <button className="sound-toggle-small" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
+                {soundEnabled ? '🔊' : '🔇'}
+              </button>
             </div>
-            <div className="stat">
-              <span className="label">Score</span>
-              <span className="value">{score.toLocaleString()}</span>
-            </div>
-            <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
-              <span className="label">Time</span>
-              <span className="value">{formatTime(timeLeft)}</span>
-            </div>
-            <div className="stat">
-              <span className="label">Found</span>
-              <span className="value">{foundWords.length}/{totalWords}</span>
+            <div className="header-stats">
+              <div className="stat">
+                <span className="label">Level</span>
+                <span className="value">{level}</span>
+              </div>
+              <div className="stat">
+                <span className="label">Score</span>
+                <span className="value">{score.toLocaleString()}</span>
+              </div>
+              <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
+                <span className="label">Time</span>
+                <span className="value">{formatTime(timeLeft)}</span>
+              </div>
+              <div className="stat">
+                <span className="label">Found</span>
+                <span className="value">{foundWords.length}/{totalWords}</span>
+              </div>
             </div>
           </header>
 
