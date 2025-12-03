@@ -179,7 +179,7 @@
 
 /* Menu Leaderboard */
 .menu-leaderboard {
-  width: 200px;
+  width: 250px;
   background: #1a1a2e;
   border-radius: 15px;
   padding: 20px;
@@ -247,7 +247,7 @@
   border-radius: 15px;
   padding: 20px;
   text-align: left;
-  width: 200px;
+  width: 250px;
   box-sizing: border-box;
   flex-shrink: 0;
 }
