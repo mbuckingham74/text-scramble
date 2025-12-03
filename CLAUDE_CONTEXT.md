@@ -101,6 +101,8 @@ scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'
 | `DB_NAME` | Yes | MySQL database name |
 | `NODE_ENV` | Recommended | Set to `production` for prod |
 | `REDIS_URL` | Optional | Redis URL for rate limiting (falls back to in-memory) |
+| `ADMIN_USERNAME` | Optional | Admin dashboard username |
+| `ADMIN_PASSWORD` | Optional | Admin dashboard password |
 
 Generate JWT secret: `openssl rand -base64 32`
 

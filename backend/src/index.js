@@ -269,12 +269,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Admin credentials (hardcoded for simplicity - in production, use env vars)
-const ADMIN_USERNAME = 'michael';
-const ADMIN_PASSWORD = 'jag97Dorp';
+// Admin credentials from environment variables
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Admin auth middleware
 const adminAuth = (req, res, next) => {
+  // Disable admin endpoint if credentials not configured
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    return res.status(503).json({ error: 'Admin endpoint not configured' });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     return res.status(401).json({ error: 'Admin authentication required' });
