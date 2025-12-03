@@ -167,7 +167,7 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 - Environment variables required in production (no hardcoded credentials)
 - Password hashing with bcrypt (10 rounds)
 - Backend Dockerfile sets NODE_ENV=production to enforce security checks
-- Express trust proxy enabled for multi-proxy chains (Cloudflare → NPM → app)
+- Express `trust proxy` set to `2` for the proxy chain (Cloudflare → NPM → app)
 
 ## Recent Changes (Dec 2024)
 
@@ -208,4 +208,4 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - Connection state tracked via `redisReady` flag with event handlers
    - Backend connects via external `authelia_authelia-backend` Docker network
    - Increased rate limits for better gameplay (game: 300/min, score: 20/min)
-   - Fixed `trust proxy` to `true` for multi-hop reverse proxy chains
+   - Fixed `trust proxy` to `2` (number of proxies) for express-rate-limit v7 compatibility

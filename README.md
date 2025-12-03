@@ -222,7 +222,7 @@ word-twist/
 │                         WORD TWIST BACKEND                                  │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  app.set('trust proxy', true)                                        │  │
+│  │  app.set('trust proxy', 2)  // 2 proxies: Cloudflare → NPM            │  │
 │  │  ► Extracts real client IP from X-Forwarded-For chain                │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                        │
