@@ -312,27 +312,21 @@ function WordTwist() {
   }, [location.pathname, gameState, startGame, refreshAdminStats]);
 
   const submitScore = useCallback(async () => {
-    const { score, level, foundWords, timedMode, user, token, sessionId: currentSessionId } = gameStateRef.current;
+    const { user, token, sessionId: currentSessionId } = gameStateRef.current;
     if (!user || !token) return;
+    if (!currentSessionId) {
+      console.error('No session ID for score submission');
+      setApiError('Game session expired. Score not saved.');
+      return;
+    }
     try {
-      // If we have a sessionId, submit for server-verified score
-      // Otherwise fall back to legacy client-submitted data
-      const body = currentSessionId
-        ? { sessionId: currentSessionId }
-        : {
-            score,
-            level,
-            wordsFound: foundWords.length,
-            gameMode: timedMode ? 'timed' : 'untimed'
-          };
-
       await apiFetch(`${API_URL}/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ sessionId: currentSessionId })
       });
     } catch (error) {
       console.error('Failed to submit score:', error);
@@ -441,7 +435,7 @@ function WordTwist() {
       const data = await apiFetch(`${API_URL}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: currentWord, letters, sessionId: currentSessionId })
+        body: JSON.stringify({ word: currentWord, sessionId: currentSessionId })
       });
 
       if (data.valid) {

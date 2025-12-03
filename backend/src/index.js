@@ -9,7 +9,7 @@ const dictionary = require('./dictionary');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
-const { createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount } = require('./session');
+const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount } = require('./session');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,21 +30,25 @@ if (process.env.REDIS_URL) {
   redisClient.on('error', (err) => {
     console.error('Redis error:', err.message);
     redisReady = false;
+    setRedisReady(false);
   });
 
   redisClient.on('ready', () => {
-    console.log('Connected to Redis for rate limiting');
+    console.log('Connected to Redis for rate limiting and sessions');
     redisReady = true;
+    setRedisReady(true);
+    initSessionStore(redisClient, true);
   });
 
   redisClient.on('end', () => {
     console.log('Redis connection closed');
     redisReady = false;
+    setRedisReady(false);
   });
 
   redisClient.connect().catch(err => {
     console.error('Failed to connect to Redis:', err.message);
-    console.log('Rate limiting will use in-memory store');
+    console.log('Rate limiting and sessions will use in-memory store');
   });
 } else {
   console.log('REDIS_URL not set - using in-memory rate limiting');
@@ -118,16 +122,8 @@ const createLimiter = (options, prefix) => {
           redisStore.init?.(options);
         }
       },
-      get: async (key) => {
-        if (redisClient && redisReady && redisStore) {
-          try {
-            return await redisStore.get(key);
-          } catch (err) {
-            console.error(`Redis get error for ${prefix}, falling back to memory:`, err.message);
-          }
-        }
-        return memoryStore.get(key);
-      },
+      // Note: get() is not part of the express-rate-limit Store interface
+      // The library uses increment() which returns totalHits and resetTime
       increment: async (key) => {
         if (redisClient && redisReady && redisStore) {
           try {
@@ -194,13 +190,13 @@ const generalLimiter = createLimiter({
 }, 'general');
 
 // Generate a new puzzle
-app.get('/api/puzzle', gameLimiter, (req, res) => {
+app.get('/api/puzzle', gameLimiter, async (req, res) => {
   const level = parseInt(req.query.level) || 1;
   const gameMode = req.query.mode === 'untimed' ? 'untimed' : 'timed';
   const puzzle = generatePuzzle(level);
 
   // Create a server-side session to track this game
-  const sessionId = createSession(puzzle.letters, level, gameMode);
+  const sessionId = await createSession(puzzle.letters, level, gameMode);
 
   res.json({ ...puzzle, sessionId });
 });
@@ -211,30 +207,45 @@ function calculatePoints(wordLength) {
 }
 
 // Validate a word submission
-app.post('/api/validate', gameLimiter, validate(validateWordSchema), (req, res) => {
-  const { word, letters, sessionId } = req.validated;
-  const isValid = validateWord(word, letters);
+app.post('/api/validate', gameLimiter, validate(validateWordSchema), async (req, res) => {
+  const { word, sessionId } = req.validated;
   const upperWord = word.toUpperCase();
-  const points = isValid ? calculatePoints(upperWord.length) : 0;
 
-  // If sessionId provided, record the word server-side
-  if (sessionId && isValid) {
-    const result = recordWord(sessionId, upperWord, points);
-    if (!result.success) {
-      // Word already found in this session
-      return res.json({ valid: false, word: upperWord, error: result.error });
-    }
-    return res.json({ valid: true, word: upperWord, points, sessionScore: result.sessionScore });
+  // Get session and validate against server-stored letters (not client-provided)
+  const session = await getSession(sessionId);
+  if (!session) {
+    return res.status(400).json({ valid: false, word: upperWord, error: 'Invalid or expired session' });
   }
 
-  res.json({ valid: isValid, word: upperWord, points: isValid ? points : 0 });
+  // Validate word against the session's letters
+  const isValid = validateWord(upperWord, session.letters);
+  const points = isValid ? calculatePoints(upperWord.length) : 0;
+
+  if (!isValid) {
+    return res.json({ valid: false, word: upperWord, points: 0 });
+  }
+
+  // Record the word server-side
+  const result = await recordWord(sessionId, upperWord, points);
+  if (!result.success) {
+    // Word already found in this session
+    return res.json({ valid: false, word: upperWord, error: result.error });
+  }
+
+  res.json({ valid: true, word: upperWord, points, sessionScore: result.sessionScore });
 });
 
 // Get all valid words for a set of letters (for end of round reveal)
-app.post('/api/solutions', gameLimiter, validate(solutionsSchema), (req, res) => {
-  const { letters } = req.validated;
-  // letters is an array, getAllValidWords expects a string
-  const words = getAllValidWords(letters.join(''));
+app.post('/api/solutions', gameLimiter, validate(solutionsSchema), async (req, res) => {
+  const { sessionId } = req.validated;
+
+  // Get session to retrieve letters
+  const session = await getSession(sessionId);
+  if (!session) {
+    return res.status(400).json({ error: 'Invalid or expired session' });
+  }
+
+  const words = getAllValidWords(session.letters.join(''));
   res.json({ words });
 });
 
@@ -288,43 +299,25 @@ app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
   }
 });
 
-// Submit a score (requires auth)
+// Submit a score (requires auth and valid session)
 app.post('/api/scores', scoreLimiter, authMiddleware, validate(scoreSchema), async (req, res) => {
-  const { sessionId, score: clientScore, level: clientLevel, wordsFound: clientWordsFound, gameMode: clientGameMode } = req.validated;
+  const { sessionId } = req.validated;
   const userId = req.user.userId; // From JWT token, not request body
 
-  let score, level, wordsFound, gameMode;
-
-  // If sessionId provided, use server-verified data
-  if (sessionId) {
-    const summary = endSession(sessionId);
-    if (!summary) {
-      return res.status(400).json({ error: 'Invalid or expired game session' });
-    }
-    score = summary.score;
-    level = summary.level;
-    wordsFound = summary.wordsFound;
-    gameMode = summary.gameMode;
-  } else {
-    // Legacy mode: trust client data (backward compatibility)
-    // This path should be deprecated once frontend is updated
-    if (clientScore === undefined || clientLevel === undefined ||
-        clientWordsFound === undefined || clientGameMode === undefined) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    score = clientScore;
-    level = clientLevel;
-    wordsFound = clientWordsFound;
-    gameMode = clientGameMode;
-    console.warn(`Legacy score submission from user ${userId} - no session verification`);
+  // Session is required - no legacy fallback to prevent score tampering
+  const summary = await endSession(sessionId);
+  if (!summary) {
+    return res.status(400).json({ error: 'Invalid or expired game session' });
   }
+
+  const { score, level, wordsFound, gameMode } = summary;
 
   try {
     const [result] = await db.execute(
       'INSERT INTO scores (user_id, score, level, words_found, game_mode) VALUES (?, ?, ?, ?, ?)',
       [userId, score, level, wordsFound, gameMode]
     );
-    res.json({ success: true, scoreId: result.insertId, verified: !!sessionId });
+    res.json({ success: true, scoreId: result.insertId, verified: true });
   } catch (error) {
     console.error('Score submission error:', error);
     res.status(500).json({ error: 'Failed to submit score' });
@@ -443,7 +436,7 @@ app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
       recentUsers,
       recentGames,
       dictionarySize: dictionary.size,
-      activeSessions: getSessionCount()
+      activeSessions: await getSessionCount()
     });
   } catch (error) {
     console.error('Admin stats error:', error);
