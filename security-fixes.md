@@ -7,12 +7,12 @@ This document describes the security improvements made to the Word Twist backend
 ### 1. Unauthenticated Score Submission
 **Problem:** Score submissions trusted a user-supplied `userId` in the request body. Anyone could POST scores for any account.
 
-**Fix:** Added JWT authentication. Score submission now requires a valid `Authorization: Bearer <token>` header. The user ID is extracted from the verified token, not the request body.
+**Fix:** Added JWT authentication with httpOnly cookies. Score submission extracts user ID from verified token, not request body.
 
 ### 2. No Session/Token Auth
 **Problem:** Login only returned `userId`/`username` with no session or token. The returned `userId` could be reused to submit fake scores.
 
-**Fix:** Login and registration now return a JWT token (expires in 7 days). Protected endpoints require this token.
+**Fix:** Login and registration set JWT in httpOnly cookie (expires in 7 days). Also returns token in response body for non-browser API clients. Protected endpoints require valid JWT.
 
 ### 3. No Rate Limiting
 **Problem:** Auth endpoints had no rate limiting, allowing unlimited brute-force attempts.
@@ -37,7 +37,7 @@ This document describes the security improvements made to the Word Twist backend
 - `wordsFound`: integer, 0-500
 - `gameMode`: enum `'timed'` | `'untimed'`
 - `letters`: array of exactly 6 single-letter strings
-- `word`: 3-6 letter alphabetic string
+- `word`: MIN_WORD_LENGTH to MAX_WORD_LENGTH letter alphabetic string (uses shared constants)
 - `username`: 3-20 alphanumeric characters + underscores
 - `password`: 4-100 characters
 
@@ -53,8 +53,13 @@ This document describes the security improvements made to the Word Twist backend
 
 ## New Files
 
-- `backend/src/auth.js` - JWT token generation, verification, and auth middleware
-- `backend/src/validation.js` - Zod schemas and validation middleware
+- `backend/src/auth.js` - JWT token generation, verification, and auth middleware (reads from cookie with header fallback)
+- `backend/src/validation.js` - Zod schemas and validation middleware (uses shared constants)
+- `backend/src/constants.js` - Shared gameplay constants (timers, scoring, level thresholds)
+- `backend/src/constants.test.js` - Tests to verify frontend/backend constants stay in sync
+- `backend/src/session.js` - Admin session management with httpOnly cookies
+- `frontend/src/constants.js` - Frontend copy of gameplay constants (ES modules)
+- `frontend/src/components/` - Reusable UI components (WordSlots, LeaderboardList, LeaderboardTable, LetterTile)
 - `.env` - Environment variables (not committed to git)
 
 ## New Dependencies
@@ -62,6 +67,7 @@ This document describes the security improvements made to the Word Twist backend
 - `jsonwebtoken` - JWT token handling
 - `express-rate-limit` - Rate limiting middleware
 - `zod` - Schema validation
+- `cookie-parser` - Cookie parsing middleware for httpOnly JWT cookies
 
 ## Environment Variables
 
@@ -80,9 +86,9 @@ The following environment variables are now used:
 
 ### Modified Endpoints
 
-- `POST /api/scores` - Now requires `Authorization: Bearer <token>` header. No longer accepts `userId` in body.
-- `POST /api/login` - Now returns `token` in response
-- `POST /api/register` - Now returns `token` in response
+- `POST /api/scores` - Now requires valid JWT (from httpOnly cookie or Authorization header). No longer accepts `userId` in body.
+- `POST /api/login` - Sets JWT in httpOnly cookie, also returns `token` in response body
+- `POST /api/register` - Sets JWT in httpOnly cookie, also returns `token` in response body
 
 ### Removed Endpoints
 
@@ -91,12 +97,19 @@ The following environment variables are now used:
 ### New Endpoints
 
 - `GET /api/scores/me` - Get current user's scores (requires auth)
+- `POST /api/logout` - Clears user JWT cookie
+- `POST /api/admin/login` - Admin login with httpOnly session cookie
+- `POST /api/admin/logout` - Clears admin session cookie
+- `GET /api/admin/stats` - Admin dashboard stats (requires admin session)
 
 ## Frontend Changes
 
-- Stores JWT token in `localStorage` as `wordtwist_token`
-- Sends `Authorization: Bearer <token>` header with score submissions
-- Clears token on logout
+- JWT now stored in httpOnly cookie (not localStorage) - XSS protection
+- All API calls use `credentials: 'include'` for cookie handling
+- User info (username only) stored in localStorage for display
+- Admin auth uses separate httpOnly session cookies
+- Extracted reusable UI components (WordSlots, LeaderboardList, LeaderboardTable, LetterTile)
+- Gameplay constants imported from `constants.js` instead of hardcoded
 - Safe localStorage parsing with try/catch to handle malformed data
 - Proper API error handling with `response.ok` checks
 - Fixed stale closure in `endRound` using refs for current game state
@@ -108,6 +121,8 @@ The following environment variables are now used:
 
 ## Deployment Notes
 
-1. Create `.env` file on server with `JWT_SECRET` (use `openssl rand -base64 32` to generate)
-2. Existing users will need to log in again to get a JWT token
+1. Create `.env` file on server with `JWT_SECRET` and `ADMIN_SESSION_SECRET` (use `openssl rand -base64 32` to generate each)
+2. Existing users will need to log in again to get a JWT cookie
 3. Old sessions (just `userId` in localStorage) will not work for score submission
+4. Admin credentials should be set via `ADMIN_USER` and `ADMIN_PASSWORD` environment variables
+5. Run `npm test` in backend to verify constants are in sync between frontend/backend

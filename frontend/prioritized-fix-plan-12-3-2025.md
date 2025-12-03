@@ -37,45 +37,52 @@ Issues identified during codebase review, organized by functionality area.
 - **NOT in scope**: User JWT (that's T4)
 - **GitHub PR**: #8
 
-### T4: User JWT Hardening (NOT STARTED)
+### T4: User JWT Hardening ✅ MERGED
 - **Issue**: User JWT stored in localStorage, vulnerable to XSS
 - **Scope**:
-  - `backend/src/index.js` - set JWT in httpOnly cookie on login/register
-  - `backend/src/auth.js` - read JWT from cookie instead of header
+  - `backend/src/index.js` - set JWT in httpOnly cookie on login/register, add logout endpoint
+  - `backend/src/auth.js` - read JWT from cookie (with header fallback for API clients)
   - `frontend/src/App.js` - remove localStorage for token, add `credentials: 'include'`
 - **NOT in scope**: Admin auth (that's T3)
+- **GitHub PR**: #9 (merged)
 
 ---
 
 ## Area 4: Privacy/Compliance
 
-### T5: Matomo Consent & SRI (NOT STARTED)
+### T5: Matomo Consent & SRI ⏭️ SKIPPED
 - **Issue**: Tracking script injected without consent, no integrity hash
 - **Scope**:
   - `frontend/public/index.html` - conditional loading, SRI hash
   - `frontend/src/App.js` - consent banner component (if needed)
 - **NOT in scope**: Any auth or gameplay code
+- **Status**: Skipped per user decision
 
 ---
 
 ## Area 5: Code Quality/Maintainability
 
-### T6: Extract Gameplay Constants (NOT STARTED)
+### T6: Extract Gameplay Constants ✅ MERGED
 - **Issue**: Timer (120s), scoring formula, level thresholds hardcoded in App.js
 - **Scope**:
-  - New `frontend/src/constants.js` or `shared/constants.js`
+  - `backend/src/constants.js` - source of truth for all gameplay constants
+  - `frontend/src/constants.js` - ES module copy (CRA can't import outside src/)
+  - `backend/src/game.js`, `backend/src/validation.js`, `backend/src/dictionary.js` - use constants
   - `frontend/src/App.js` - import constants
-  - `backend/src/game.js` - import same constants (if shared)
+  - `backend/src/constants.test.js` - sync test to catch drift between frontend/backend
 - **NOT in scope**: UI components, auth
+- **GitHub PR**: #10 (merged)
 
-### T7: Extract UI Components (NOT STARTED)
+### T7: Extract UI Components ✅ MERGED
 - **Issue**: `renderWordSlots` vs `renderAllWords` nearly identical; leaderboard rendered 3 times
 - **Scope**:
-  - New `frontend/src/components/WordSlot.js`
-  - New `frontend/src/components/LeaderboardTable.js`
-  - New `frontend/src/components/LetterTile.js`
-  - `frontend/src/App.js` - use new components
+  - `frontend/src/components/WordSlots.js` - unified word display for gameplay and end screens
+  - `frontend/src/components/LeaderboardList.js` - compact list for menu/sidebar
+  - `frontend/src/components/LeaderboardTable.js` - full table for leaderboard screen
+  - `frontend/src/components/LetterTile.js` - interactive letter button
+  - `frontend/src/App.js` - use new components, remove duplicated render functions
 - **NOT in scope**: Auth, constants, backend
+- **GitHub PR**: #11 (merged)
 
 ---
 
@@ -100,7 +107,9 @@ When reviewing a GitHub PR, only flag issues that are **in scope** for that task
 | Critical Bugs | T1 | #5 | ✅ Merged |
 | Build/DevOps | T2 | #6 | ✅ Merged |
 | Auth - Admin | T3 | #8 | ✅ Merged |
-| Auth - User | T4 | - | ⏳ Not started |
-| Privacy | T5 | - | ⏳ Not started |
-| Constants | T6 | - | ⏳ Not started |
-| Components | T7 | - | ⏳ Not started |
+| Auth - User | T4 | #9 | ✅ Merged |
+| Privacy | T5 | - | ⏭️ Skipped |
+| Constants | T6 | #10 | ✅ Merged |
+| Components | T7 | #11 | ✅ Merged |
+
+**All tasks complete!** (6 merged, 1 skipped)
