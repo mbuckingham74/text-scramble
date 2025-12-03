@@ -598,7 +598,7 @@ function App() {
                 <tr key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
                   <td>{idx + 1}</td>
                   <td>{entry.username}</td>
-                  <td>{entry.score}</td>
+                  <td>{entry.score.toLocaleString()}</td>
                   <td>{entry.level}</td>
                   <td>{new Date(entry.created_at).toLocaleDateString()}</td>
                 </tr>
@@ -686,7 +686,7 @@ function App() {
                     <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
                       <span className="rank">{idx + 1}.</span>
                       <span className="name">{entry.username}</span>
-                      <span className="score">{entry.score}</span>
+                      <span className="score">{entry.score.toLocaleString()}</span>
                     </li>
                   ))}
                 </ol>
@@ -702,7 +702,7 @@ function App() {
                     <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
                       <span className="rank">{idx + 1}.</span>
                       <span className="name">{entry.username}</span>
-                      <span className="score">{entry.score}</span>
+                      <span className="score">{entry.score.toLocaleString()}</span>
                     </li>
                   ))}
                 </ol>
@@ -721,7 +721,7 @@ function App() {
           <h1>Round Complete!</h1>
           <div className="stats">
             <p>Words Found: {foundWords.length} / {totalWords}</p>
-            <p>Score: {score}</p>
+            <p>Score: {score.toLocaleString()}</p>
             <p>Level: {level}</p>
           </div>
           <div className="all-words">
@@ -768,7 +768,7 @@ function App() {
           <h1>Game Over!</h1>
           <p className="reason">You need to find at least one 6-letter word to continue!</p>
           <div className="stats">
-            <p>Final Score: {score}</p>
+            <p>Final Score: {score.toLocaleString()}</p>
             <p>Levels Completed: {level - 1}</p>
             <p>Words Found This Round: {foundWords.length} / {totalWords}</p>
             {user && isOnLeaderboard && (
@@ -812,7 +812,7 @@ function App() {
             </div>
             <div className="stat">
               <span className="label">Score</span>
-              <span className="value">{score}</span>
+              <span className="value">{score.toLocaleString()}</span>
             </div>
             <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
               <span className="label">Time</span>
@@ -877,7 +877,7 @@ function App() {
                 <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
                   <span className="rank">{idx + 1}.</span>
                   <span className="name">{entry.username}</span>
-                  <span className="score">{entry.score}</span>
+                  <span className="score">{entry.score.toLocaleString()}</span>
                 </li>
               ))}
             </ol>
