@@ -1,9 +1,43 @@
 .app {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 20px;
+}
+
+/* API Error Banner */
+.api-error-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 71, 87, 0.95);
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: 600;
+  z-index: 1001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.api-error-banner .dismiss-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.api-error-banner .dismiss-btn:hover {
+  opacity: 1;
 }
 
 /* Sound Toggle */

@@ -173,3 +173,9 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - Proper API error handling
    - Duplicate word detection (always uppercase)
    - Timeout cleanup on unmount
+6. **Frontend robustness improvements** (Dec 2024):
+   - **localStorage safety**: Added `isStorageAvailable()` check for Safari private mode / strict privacy settings. Safe helpers (`safeGetJSON`, `safeGetString`, `safeSetItem`, `safeRemoveItem`) prevent crashes when storage is blocked
+   - **API response handling**: `apiFetch` now handles 204 No Content and empty responses correctly, checks Content-Type before parsing JSON
+   - **401/expired token handling**: Added `handleAuthError()` that logs user out and shows error when JWT expires or is invalid
+   - **User-visible API errors**: Added `apiError` state and dismissible red banner at top of screen. Errors from leaderboard fetch, score submit, and puzzle load are now shown to users instead of silently logged
+   - **Dockerfile optimization**: Changed `npm install` to `npm ci` for reproducible builds from lockfile

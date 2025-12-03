@@ -4,22 +4,60 @@ import sounds from './sounds';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
+// Check if localStorage is available
+const isStorageAvailable = () => {
+  try {
+    const test = '__storage_test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const storageAvailable = isStorageAvailable();
+
 // Safe localStorage helpers
 const safeGetJSON = (key) => {
+  if (!storageAvailable) return null;
   try {
     const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : null;
   } catch {
-    localStorage.removeItem(key);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage blocked, ignore cleanup
+    }
     return null;
   }
 };
 
 const safeGetString = (key) => {
+  if (!storageAvailable) return null;
   try {
     return localStorage.getItem(key);
   } catch {
     return null;
+  }
+};
+
+const safeSetItem = (key, value) => {
+  if (!storageAvailable) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage blocked or full, ignore
+  }
+};
+
+const safeRemoveItem = (key) => {
+  if (!storageAvailable) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage blocked, ignore
   }
 };
 
@@ -28,9 +66,19 @@ const apiFetch = async (url, options = {}) => {
   const response = await fetch(url, options);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || `Request failed: ${response.status}`);
+    const error = new Error(data.error || `Request failed: ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
-  return response.json();
+  // Handle 204 No Content or empty responses
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return {};
+  }
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  }
+  return {};
 };
 
 function App() {
@@ -55,6 +103,7 @@ function App() {
   const [token, setToken] = useState(() => safeGetString('wordtwist_token'));
   const [authError, setAuthError] = useState('');
   const [leaderboard, setLeaderboard] = useState({ timed: [], untimed: [] });
+  const [apiError, setApiError] = useState(''); // For surfacing API errors to users
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
@@ -104,8 +153,8 @@ function App() {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
         setToken(data.token);
-        localStorage.setItem('wordtwist_user', JSON.stringify(userData));
-        localStorage.setItem('wordtwist_token', data.token);
+        safeSetItem('wordtwist_user', JSON.stringify(userData));
+        safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
       } else {
         setAuthError(data.error || 'Login failed');
@@ -127,8 +176,8 @@ function App() {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
         setToken(data.token);
-        localStorage.setItem('wordtwist_user', JSON.stringify(userData));
-        localStorage.setItem('wordtwist_token', data.token);
+        safeSetItem('wordtwist_user', JSON.stringify(userData));
+        safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
       } else {
         setAuthError(data.error || 'Registration failed');
@@ -138,12 +187,18 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('wordtwist_user');
-    localStorage.removeItem('wordtwist_token');
-  };
+    safeRemoveItem('wordtwist_user');
+    safeRemoveItem('wordtwist_token');
+  }, []);
+
+  // Handle 401 errors by logging out and showing error
+  const handleAuthError = useCallback(() => {
+    handleLogout();
+    setApiError('Your session has expired. Please log in again.');
+  }, [handleLogout]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -152,8 +207,10 @@ function App() {
         timed: data.timed || [],
         untimed: data.untimed || []
       });
+      setApiError(''); // Clear any previous error on success
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
+      setApiError('Failed to load leaderboard. Please refresh the page.');
     }
   }, []);
 
@@ -181,10 +238,16 @@ function App() {
       });
     } catch (error) {
       console.error('Failed to submit score:', error);
+      if (error.status === 401) {
+        handleAuthError();
+      } else {
+        setApiError('Failed to save your score. It may not appear on the leaderboard.');
+      }
     }
-  }, []);
+  }, [handleAuthError]);
 
   const startNewRound = useCallback(async (timed = timedMode) => {
+    setApiError(''); // Clear errors when starting new round
     try {
       const data = await apiFetch(`${API_URL}/puzzle`);
 
@@ -199,6 +262,7 @@ function App() {
       setGameState('playing');
     } catch (error) {
       console.error('Failed to fetch puzzle:', error);
+      setApiError('Failed to load puzzle. Please try again.');
       showMessage('Failed to load puzzle. Please try again.', 'error');
     }
   }, [timedMode, showMessage]);
@@ -535,6 +599,12 @@ function App() {
   if (gameState === 'menu') {
     return (
       <div className="app">
+        {apiError && (
+          <div className="api-error-banner">
+            {apiError}
+            <button className="dismiss-btn" onClick={() => setApiError('')}>×</button>
+          </div>
+        )}
         <div className="menu-layout">
           <div className="menu">
             <button className="sound-toggle" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
