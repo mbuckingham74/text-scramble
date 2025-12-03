@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { createClient } = require('redis');
@@ -9,7 +10,7 @@ const dictionary = require('./dictionary');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
-const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount } = require('./session');
+const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount, createAdminSession, validateAdminSession, deleteAdminSession, ADMIN_SESSION_TTL_MS } = require('./session');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -86,6 +87,7 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
 
 // Memory stores for fallback (one per limiter prefix)
 const memoryStores = new Map();
@@ -388,28 +390,69 @@ app.get('/api/health', (req, res) => {
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-// Admin auth middleware
-const adminAuth = (req, res, next) => {
+// Cookie settings for admin session
+const isProduction = process.env.NODE_ENV === 'production';
+const ADMIN_COOKIE_NAME = 'wordtwist_admin_session';
+const adminCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'strict' : 'lax',
+  maxAge: ADMIN_SESSION_TTL_MS,
+  path: '/api/admin'
+};
+
+// Admin auth middleware - validates session cookie
+const adminAuth = async (req, res, next) => {
   // Disable admin endpoint if credentials not configured
   if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
     return res.status(503).json({ error: 'Admin endpoint not configured' });
   }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
+  const sessionId = req.cookies[ADMIN_COOKIE_NAME];
+  if (!sessionId) {
     return res.status(401).json({ error: 'Admin authentication required' });
   }
 
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
-  const [username, password] = credentials.split(':');
+  const isValid = await validateAdminSession(sessionId);
+  if (!isValid) {
+    res.clearCookie(ADMIN_COOKIE_NAME, { path: '/api/admin' });
+    return res.status(401).json({ error: 'Session expired' });
+  }
+
+  next();
+};
+
+// Admin login endpoint
+app.post('/api/admin/login', authLimiter, async (req, res) => {
+  // Disable admin endpoint if credentials not configured
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    return res.status(503).json({ error: 'Admin endpoint not configured' });
+  }
+
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
 
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    next();
+    const sessionId = await createAdminSession();
+    res.cookie(ADMIN_COOKIE_NAME, sessionId, adminCookieOptions);
+    res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Invalid admin credentials' });
   }
-};
+});
+
+// Admin logout endpoint
+app.post('/api/admin/logout', async (req, res) => {
+  const sessionId = req.cookies[ADMIN_COOKIE_NAME];
+  if (sessionId) {
+    await deleteAdminSession(sessionId);
+  }
+  res.clearCookie(ADMIN_COOKIE_NAME, { path: '/api/admin' });
+  res.json({ success: true });
+});
 
 // Admin stats endpoint
 app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
