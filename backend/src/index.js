@@ -9,6 +9,7 @@ const dictionary = require('./dictionary');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
+const { createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount } = require('./session');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -72,32 +73,92 @@ app.use(cors({
 
 app.use(express.json({ limit: '10kb' }));
 
-// Create rate limiter store - uses Redis if available, otherwise falls back to memory
-const createStore = (prefix) => {
-  if (redisClient && redisReady) {
-    return new RedisStore({
-      sendCommand: async (...args) => {
-        if (!redisReady) {
-          throw new Error('Redis not ready');
-        }
-        return redisClient.sendCommand(args);
-      },
-      prefix: `wordtwist:${prefix}:`
-    });
+// Memory stores for fallback (one per limiter prefix)
+const memoryStores = new Map();
+
+// Get or create a memory store for a prefix
+const getMemoryStore = (prefix, windowMs) => {
+  if (!memoryStores.has(prefix)) {
+    const { MemoryStore } = require('express-rate-limit');
+    memoryStores.set(prefix, new MemoryStore());
   }
-  // Return undefined to use default MemoryStore
-  return undefined;
+  return memoryStores.get(prefix);
 };
 
-// Rate limiter factory - creates limiter with dynamic store selection
+// Create Redis store with error handling that falls back gracefully
+const createRedisStore = (prefix) => {
+  return new RedisStore({
+    sendCommand: async (...args) => {
+      if (!redisReady) {
+        throw new Error('Redis not ready');
+      }
+      return redisClient.sendCommand(args);
+    },
+    prefix: `wordtwist:${prefix}:`
+  });
+};
+
+// Rate limiter factory with dynamic store selection per request
 const createLimiter = (options, prefix) => {
+  // Create stores upfront
+  const memoryStore = getMemoryStore(prefix, options.windowMs);
+  let redisStore = null;
+
   return rateLimit({
     ...options,
     standardHeaders: true,
     legacyHeaders: false,
-    // Dynamically get store on each request to handle Redis reconnection
-    store: createStore(prefix),
-    // Skip store errors - fall back to allowing the request rather than 500
+    // Use a custom store wrapper that checks Redis availability per request
+    store: {
+      init: (options) => {
+        // Initialize both stores
+        memoryStore.init?.(options);
+        if (redisClient) {
+          redisStore = createRedisStore(prefix);
+          redisStore.init?.(options);
+        }
+      },
+      get: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.get(key);
+          } catch (err) {
+            console.error(`Redis get error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.get(key);
+      },
+      increment: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.increment(key);
+          } catch (err) {
+            console.error(`Redis increment error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.increment(key);
+      },
+      decrement: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.decrement(key);
+          } catch (err) {
+            console.error(`Redis decrement error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.decrement(key);
+      },
+      resetKey: async (key) => {
+        if (redisClient && redisReady && redisStore) {
+          try {
+            return await redisStore.resetKey(key);
+          } catch (err) {
+            console.error(`Redis resetKey error for ${prefix}, falling back to memory:`, err.message);
+          }
+        }
+        return memoryStore.resetKey(key);
+      }
+    },
     handler: (req, res, next, options) => {
       res.status(options.statusCode).json(options.message);
     }
@@ -135,15 +196,38 @@ const generalLimiter = createLimiter({
 // Generate a new puzzle
 app.get('/api/puzzle', gameLimiter, (req, res) => {
   const level = parseInt(req.query.level) || 1;
+  const gameMode = req.query.mode === 'untimed' ? 'untimed' : 'timed';
   const puzzle = generatePuzzle(level);
-  res.json(puzzle);
+
+  // Create a server-side session to track this game
+  const sessionId = createSession(puzzle.letters, level, gameMode);
+
+  res.json({ ...puzzle, sessionId });
 });
+
+// Calculate points for a word
+function calculatePoints(wordLength) {
+  return wordLength * 10 + (wordLength - 3) * 5;
+}
 
 // Validate a word submission
 app.post('/api/validate', gameLimiter, validate(validateWordSchema), (req, res) => {
-  const { word, letters } = req.validated;
+  const { word, letters, sessionId } = req.validated;
   const isValid = validateWord(word, letters);
-  res.json({ valid: isValid, word: word.toUpperCase() });
+  const upperWord = word.toUpperCase();
+  const points = isValid ? calculatePoints(upperWord.length) : 0;
+
+  // If sessionId provided, record the word server-side
+  if (sessionId && isValid) {
+    const result = recordWord(sessionId, upperWord, points);
+    if (!result.success) {
+      // Word already found in this session
+      return res.json({ valid: false, word: upperWord, error: result.error });
+    }
+    return res.json({ valid: true, word: upperWord, points, sessionScore: result.sessionScore });
+  }
+
+  res.json({ valid: isValid, word: upperWord, points: isValid ? points : 0 });
 });
 
 // Get all valid words for a set of letters (for end of round reveal)
@@ -206,15 +290,41 @@ app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
 
 // Submit a score (requires auth)
 app.post('/api/scores', scoreLimiter, authMiddleware, validate(scoreSchema), async (req, res) => {
-  const { score, level, wordsFound, gameMode } = req.validated;
+  const { sessionId, score: clientScore, level: clientLevel, wordsFound: clientWordsFound, gameMode: clientGameMode } = req.validated;
   const userId = req.user.userId; // From JWT token, not request body
+
+  let score, level, wordsFound, gameMode;
+
+  // If sessionId provided, use server-verified data
+  if (sessionId) {
+    const summary = endSession(sessionId);
+    if (!summary) {
+      return res.status(400).json({ error: 'Invalid or expired game session' });
+    }
+    score = summary.score;
+    level = summary.level;
+    wordsFound = summary.wordsFound;
+    gameMode = summary.gameMode;
+  } else {
+    // Legacy mode: trust client data (backward compatibility)
+    // This path should be deprecated once frontend is updated
+    if (clientScore === undefined || clientLevel === undefined ||
+        clientWordsFound === undefined || clientGameMode === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    score = clientScore;
+    level = clientLevel;
+    wordsFound = clientWordsFound;
+    gameMode = clientGameMode;
+    console.warn(`Legacy score submission from user ${userId} - no session verification`);
+  }
 
   try {
     const [result] = await db.execute(
       'INSERT INTO scores (user_id, score, level, words_found, game_mode) VALUES (?, ?, ?, ?, ?)',
       [userId, score, level, wordsFound, gameMode]
     );
-    res.json({ success: true, scoreId: result.insertId });
+    res.json({ success: true, scoreId: result.insertId, verified: !!sessionId });
   } catch (error) {
     console.error('Score submission error:', error);
     res.status(500).json({ error: 'Failed to submit score' });
@@ -332,7 +442,8 @@ app.get('/api/admin/stats', generalLimiter, adminAuth, async (req, res) => {
       untimedGames,
       recentUsers,
       recentGames,
-      dictionarySize: dictionary.size
+      dictionarySize: dictionary.size,
+      activeSessions: getSessionCount()
     });
   } catch (error) {
     console.error('Admin stats error:', error);

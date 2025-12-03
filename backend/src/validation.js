@@ -11,19 +11,22 @@ const loginSchema = z.object({
 });
 
 const validateWordSchema = z.object({
-  word: z.string().min(3).max(6).regex(/^[a-zA-Z]+$/),
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).length(6)
+  word: z.string().min(3).max(8).regex(/^[a-zA-Z]+$/),
+  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8),
+  sessionId: z.string().length(32).regex(/^[a-f0-9]+$/).optional()
 });
 
 const solutionsSchema = z.object({
-  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).length(6)
+  letters: z.array(z.string().length(1).regex(/^[a-zA-Z]$/)).min(6).max(8)
 });
 
 const scoreSchema = z.object({
-  score: z.number().int().min(0).max(1000000),
-  level: z.number().int().min(1).max(1000),
-  wordsFound: z.number().int().min(0).max(500),
-  gameMode: z.enum(['timed', 'untimed'])
+  sessionId: z.string().length(32).regex(/^[a-f0-9]+$/).optional(),
+  // Legacy fields (accepted but not trusted if sessionId present)
+  score: z.number().int().min(0).max(1000000).optional(),
+  level: z.number().int().min(1).max(1000).optional(),
+  wordsFound: z.number().int().min(0).max(500).optional(),
+  gameMode: z.enum(['timed', 'untimed']).optional()
 });
 
 function validate(schema) {

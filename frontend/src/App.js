@@ -110,15 +110,16 @@ function WordTwist() {
   const [leaderboardModal, setLeaderboardModal] = useState(null); // { rank: number, score: number } when player makes leaderboard
   const [adminStats, setAdminStats] = useState(null);
   const [adminError, setAdminError] = useState('');
+  const [sessionId, setSessionId] = useState(null); // Server-side game session for score verification
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
-  const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, token: null });
+  const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, token: null, sessionId: null });
 
   // Keep refs in sync with state
   useEffect(() => {
-    gameStateRef.current = { score, level, foundWords, timedMode, user, token };
-  }, [score, level, foundWords, timedMode, user, token]);
+    gameStateRef.current = { score, level, foundWords, timedMode, user, token, sessionId };
+  }, [score, level, foundWords, timedMode, user, token, sessionId]);
 
   const showMessage = useCallback((text, type = 'info') => {
     // Clear any existing timeout
@@ -311,21 +312,27 @@ function WordTwist() {
   }, [location.pathname, gameState, startGame, refreshAdminStats]);
 
   const submitScore = useCallback(async () => {
-    const { score, level, foundWords, timedMode, user, token } = gameStateRef.current;
+    const { score, level, foundWords, timedMode, user, token, sessionId: currentSessionId } = gameStateRef.current;
     if (!user || !token) return;
     try {
+      // If we have a sessionId, submit for server-verified score
+      // Otherwise fall back to legacy client-submitted data
+      const body = currentSessionId
+        ? { sessionId: currentSessionId }
+        : {
+            score,
+            level,
+            wordsFound: foundWords.length,
+            gameMode: timedMode ? 'timed' : 'untimed'
+          };
+
       await apiFetch(`${API_URL}/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          score,
-          level,
-          wordsFound: foundWords.length,
-          gameMode: timedMode ? 'timed' : 'untimed'
-        })
+        body: JSON.stringify(body)
       });
     } catch (error) {
       console.error('Failed to submit score:', error);
@@ -340,11 +347,13 @@ function WordTwist() {
   const startNewRound = useCallback(async (timed = timedMode, puzzleLevel = 1) => {
     setApiError(''); // Clear errors when starting new round
     try {
-      const data = await apiFetch(`${API_URL}/puzzle?level=${puzzleLevel}`);
+      const mode = timed ? 'timed' : 'untimed';
+      const data = await apiFetch(`${API_URL}/puzzle?level=${puzzleLevel}&mode=${mode}`);
 
       setLetters(data.letters);
       setWordsByLength(data.wordsByLength);
       setTotalWords(data.totalWords);
+      setSessionId(data.sessionId); // Store session for server-side score verification
       setFoundWords([]);
       setSelectedIndices([]);
       setCurrentWord('');
@@ -428,21 +437,22 @@ function WordTwist() {
     }
 
     try {
+      const { sessionId: currentSessionId } = gameStateRef.current;
       const data = await apiFetch(`${API_URL}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: currentWord, letters })
+        body: JSON.stringify({ word: currentWord, letters, sessionId: currentSessionId })
       });
 
       if (data.valid) {
         const word = data.word.toUpperCase(); // Ensure consistent casing
         setFoundWords(prev => [...prev, word]);
 
-        // Calculate points: longer words = more points
-        const points = word.length * 10 + (word.length - 3) * 5;
+        // Use points from server if provided, otherwise calculate locally
+        const points = data.points || (word.length * 10 + (word.length - 3) * 5);
         setScore(prev => prev + points);
 
-        if (word.length === 6) {
+        if (word.length === letters.length) {
           sounds.wordExcellent();
           setFoundFullWord(true);
           showMessage('EXCELLENT! Full word found!', 'success');
@@ -452,7 +462,7 @@ function WordTwist() {
         }
       } else {
         sounds.wordInvalid();
-        showMessage('Not a valid word!', 'error');
+        showMessage(data.error || 'Not a valid word!', 'error');
       }
     } catch (error) {
       console.error('Validation error:', error);
@@ -950,7 +960,7 @@ function WordTwist() {
         )}
         <div className="game-over">
           <h1>Game Over!</h1>
-          <p className="reason">You need to find at least one 6-letter word to continue!</p>
+          <p className="reason">You need to find at least one full-length word to continue!</p>
           <div className="stats">
             <p>Final Score: {score.toLocaleString()}</p>
             <p>Levels Completed: {level - 1}</p>
