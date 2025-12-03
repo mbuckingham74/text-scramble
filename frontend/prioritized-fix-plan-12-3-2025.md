@@ -2,68 +2,103 @@
 
 ## Overview
 
-Issues identified during codebase review, prioritized by severity and grouped into logical PRs.
-
-## Progress Tracker
-
-### PR #1: Critical Crash Fix (PR Ready)
-- [ ] **Fix `startGame` reference before initialization** (Critical)
-  - `useEffect` at lines 288-312 references `startGame` before it's defined at line 364
-  - Causes "Cannot access 'startGame' before initialization" on first render
-  - **PR:** https://github.com/mbuckingham74/text-scramble/pull/5
-
-### PR #2: Build Reproducibility (PR Ready)
-- [ ] **Fix Dockerfile to use package-lock.json and npm ci**
-  - Currently runs `npm install` without lock file
-  - Container builds can drift with different transitive dependency versions
-  - **PR:** https://github.com/mbuckingham74/text-scramble/pull/6
-
-### PR #3: Auth Hardening - Admin (PR Ready)
-- [ ] **Replace admin Basic auth with session-based auth**
-  - Currently base64-encodes username:password in localStorage
-  - Persists credentials indefinitely, exposes to XSS
-  - Sends password on every request
-  - **PR:** https://github.com/mbuckingham74/text-scramble/pull/7
-
-### PR #4: Auth Hardening - User JWT
-- [ ] **Migrate JWT from localStorage to httpOnly cookies**
-  - Current localStorage approach vulnerable to XSS/script access
-  - No expiry enforcement or refresh logic
-  - Backend changes required: set cookie on login, validate from cookie
-  - Frontend changes: remove localStorage handling, add `credentials: 'include'`
-
-### PR #5: Code Quality - Extract Constants
-- [ ] **Extract gameplay constants to shared config**
-  - Timer duration (120s)
-  - Scoring formula
-  - Level letter counts (6/7/8 letters per level range)
-  - Currently inline in App.js, inconsistent with server
-
-### PR #6: Code Quality - Component Extraction
-- [ ] **Extract reusable UI components**
-  - `WordSlot` component (dedup `renderWordSlots` vs `renderAllWords`)
-  - `LeaderboardTable` component (dedup 3 implementations: menu, sidebar, dedicated page)
-  - `LetterTile` component
-
-### PR #7: Privacy/Compliance
-- [ ] **Add Matomo consent gating and SRI**
-  - Currently always injects tracking script
-  - No user consent mechanism
-  - No Subresource Integrity hash
+Issues identified during codebase review, organized by functionality area.
 
 ---
 
-## Severity Legend
+## Area 1: Critical Bugs
 
-| Level | Description |
-|-------|-------------|
-| Critical | App crash or security vulnerability |
-| High | Security concern or major UX issue |
-| Medium | Best practice violation |
-| Low | Maintainability/code quality |
+### PR #1: startGame Crash Fix ✅ MERGED
+- **Issue**: `useEffect` references `startGame` before initialization
+- **Scope**: Only `frontend/src/App.js` hook reordering
+- **GitHub PR**: #5 (merged)
 
-## Notes
+---
 
-- PRs should be merged in order where dependencies exist
-- PR #3 and #4 share auth infrastructure work but are separated for easier review
-- PR #5 should coordinate with backend to ensure client/server constants match
+## Area 2: Build/DevOps
+
+### PR #2: Dockerfile Reproducibility ✅ MERGED
+- **Issue**: `npm install` without lock file causes version drift
+- **Scope**: Only `frontend/Dockerfile` and `.dockerignore`
+- **GitHub PR**: #6 (merged)
+
+---
+
+## Area 3: Authentication Security
+
+### PR #3: Admin Auth Hardening 🔄 IN REVIEW
+- **Issue**: Admin credentials stored in localStorage, sent via Basic auth
+- **Scope**:
+  - `backend/src/index.js` - new login/logout endpoints, cookie middleware
+  - `backend/src/session.js` - admin session functions
+  - `frontend/src/App.js` - admin login/logout/refresh functions only
+- **NOT in scope**: User JWT (that's PR #4)
+- **GitHub PR**: #8
+
+### PR #4: User JWT Hardening (NOT STARTED)
+- **Issue**: User JWT stored in localStorage, vulnerable to XSS
+- **Scope**:
+  - `backend/src/index.js` - set JWT in httpOnly cookie on login/register
+  - `backend/src/auth.js` - read JWT from cookie instead of header
+  - `frontend/src/App.js` - remove localStorage for token, add `credentials: 'include'`
+- **NOT in scope**: Admin auth (that's PR #3)
+
+---
+
+## Area 4: Privacy/Compliance
+
+### PR #5: Matomo Consent & SRI (NOT STARTED)
+- **Issue**: Tracking script injected without consent, no integrity hash
+- **Scope**:
+  - `frontend/public/index.html` - conditional loading, SRI hash
+  - `frontend/src/App.js` - consent banner component (if needed)
+- **NOT in scope**: Any auth or gameplay code
+
+---
+
+## Area 5: Code Quality/Maintainability
+
+### PR #6: Extract Gameplay Constants (NOT STARTED)
+- **Issue**: Timer (120s), scoring formula, level thresholds hardcoded in App.js
+- **Scope**:
+  - New `frontend/src/constants.js` or `shared/constants.js`
+  - `frontend/src/App.js` - import constants
+  - `backend/src/game.js` - import same constants (if shared)
+- **NOT in scope**: UI components, auth
+
+### PR #7: Extract UI Components (NOT STARTED)
+- **Issue**: `renderWordSlots` vs `renderAllWords` nearly identical; leaderboard rendered 3 times
+- **Scope**:
+  - New `frontend/src/components/WordSlot.js`
+  - New `frontend/src/components/LeaderboardTable.js`
+  - New `frontend/src/components/LetterTile.js`
+  - `frontend/src/App.js` - use new components
+- **NOT in scope**: Auth, constants, backend
+
+---
+
+## Review Checklist
+
+When reviewing a PR, only flag issues that are **in scope** for that PR. Use this table:
+
+| PR | Auth | Matomo | Constants | UI Components | Dockerfile |
+|----|------|--------|-----------|---------------|------------|
+| #3 (Admin Auth) | Admin only | ❌ | ❌ | ❌ | ❌ |
+| #4 (User JWT) | User only | ❌ | ❌ | ❌ | ❌ |
+| #5 (Matomo) | ❌ | ✅ | ❌ | ❌ | ❌ |
+| #6 (Constants) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| #7 (Components) | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+---
+
+## Status Summary
+
+| Area | PR | Status |
+|------|-----|--------|
+| Critical Bugs | #1 | ✅ Merged |
+| Build/DevOps | #2 | ✅ Merged |
+| Auth - Admin | #3 | 🔄 PR #8 in review |
+| Auth - User | #4 | ⏳ Not started |
+| Privacy | #5 | ⏳ Not started |
+| Constants | #6 | ⏳ Not started |
+| Components | #7 | ⏳ Not started |
