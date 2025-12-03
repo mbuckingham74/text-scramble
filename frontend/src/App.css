@@ -322,10 +322,8 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  max-width: 1300px;
+  max-width: 1000px;
   width: 100%;
-  position: relative;
-  padding-right: 230px; /* Space for absolutely positioned sidebar */
 }
 
 /* Game Styles */
@@ -602,9 +600,9 @@
 
 /* Leaderboard Sidebar */
 .leaderboard-sidebar {
-  position: absolute;
-  right: 0;
-  top: 0;
+  position: fixed;
+  right: 20px;
+  top: 20px;
   width: 200px;
   background: #1a1a2e;
   border-radius: 12px;
@@ -1044,10 +1042,6 @@
 @media (max-width: 900px) {
   .leaderboard-sidebar {
     display: none;
-  }
-
-  .game-layout {
-    padding-right: 0;
   }
 
   .menu-content {
