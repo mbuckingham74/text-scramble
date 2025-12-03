@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import sounds from './sounds';
 
@@ -81,8 +82,10 @@ const apiFetch = async (url, options = {}) => {
   return {};
 };
 
-function App() {
-  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard, admin
+function WordTwist() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [gameState, setGameState] = useState('menu'); // menu, playing, roundEnd, gameOver, login, register, leaderboard
   const [letters, setLetters] = useState([]);
   const [selectedIndices, setSelectedIndices] = useState([]);
   const [currentWord, setCurrentWord] = useState('');
@@ -159,6 +162,7 @@ function App() {
         safeSetItem('wordtwist_user', JSON.stringify(userData));
         safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
+        navigate('/');
       } else {
         setAuthError(data.error || 'Login failed');
       }
@@ -182,6 +186,7 @@ function App() {
         safeSetItem('wordtwist_user', JSON.stringify(userData));
         safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
+        navigate('/');
       } else {
         setAuthError(data.error || 'Registration failed');
       }
@@ -276,6 +281,34 @@ function App() {
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
+
+  // Handle URL-based routing on initial load or browser navigation
+  const hasInitializedRoute = useRef(false);
+  useEffect(() => {
+    const path = location.pathname;
+
+    // Handle route-based game starts
+    if (path === '/timed' && gameState === 'menu') {
+      startGame(true);
+    } else if (path === '/untimed' && gameState === 'menu') {
+      startGame(false);
+    } else if (path === '/admin') {
+      const credentials = safeGetString('wordtwist_admin');
+      if (credentials && gameState !== 'admin') {
+        refreshAdminStats();
+        setGameState('admin');
+      } else if (!credentials && gameState !== 'adminLogin') {
+        setGameState('adminLogin');
+      }
+    } else if (path === '/' && hasInitializedRoute.current) {
+      // Reset to menu when navigating back to root (after initial load)
+      if (gameState !== 'menu' && gameState !== 'login' && gameState !== 'register' && gameState !== 'leaderboard') {
+        setGameState('menu');
+      }
+    }
+
+    hasInitializedRoute.current = true;
+  }, [location.pathname, gameState, startGame, refreshAdminStats]);
 
   const submitScore = useCallback(async () => {
     const { score, level, foundWords, timedMode, user, token } = gameStateRef.current;
@@ -595,7 +628,7 @@ function App() {
             Don't have an account?{' '}
             <button className="link-btn" onClick={() => { setAuthError(''); setGameState('register'); }}>Register</button>
           </p>
-          <button className="btn secondary" onClick={() => setGameState('menu')}>Back</button>
+          <button className="btn secondary" onClick={() => navigate('/')}>Back</button>
         </div>
       </div>
     );
@@ -621,7 +654,7 @@ function App() {
             Already have an account?{' '}
             <button className="link-btn" onClick={() => { setAuthError(''); setGameState('login'); }}>Login</button>
           </p>
-          <button className="btn secondary" onClick={() => setGameState('menu')}>Back</button>
+          <button className="btn secondary" onClick={() => navigate('/')}>Back</button>
         </div>
       </div>
     );
@@ -643,7 +676,7 @@ function App() {
             <input type="password" name="password" placeholder="Admin Password" required />
             <button type="submit" className="btn primary">Login</button>
           </form>
-          <button className="btn secondary" onClick={() => { setAdminError(''); setGameState('menu'); }}>Back</button>
+          <button className="btn secondary" onClick={() => { setAdminError(''); navigate('/'); }}>Back</button>
         </div>
       </div>
     );
@@ -701,8 +734,8 @@ function App() {
           )}
           <div className="admin-buttons">
             <button className="btn secondary" onClick={refreshAdminStats}>Refresh</button>
-            <button className="btn primary" onClick={() => setGameState('menu')}>Back to Game</button>
-            <button className="btn danger" onClick={handleAdminLogout}>Logout</button>
+            <button className="btn primary" onClick={() => navigate('/')}>Back to Game</button>
+            <button className="btn danger" onClick={() => { handleAdminLogout(); navigate('/'); }}>Logout</button>
           </div>
         </div>
       </div>
@@ -751,7 +784,7 @@ function App() {
             {renderLeaderboardTable(leaderboard.timed, 'Timed Mode')}
             {renderLeaderboardTable(leaderboard.untimed, 'Untimed Mode')}
           </div>
-          <button className="btn primary" onClick={() => setGameState('menu')}>Back to Menu</button>
+          <button className="btn primary" onClick={() => navigate('/')}>Back to Menu</button>
         </div>
       </div>
     );
@@ -767,7 +800,7 @@ function App() {
           </div>
         )}
         <div className="top-right-controls">
-          <button className="admin-link" onClick={() => setGameState('adminLogin')}>Admin</button>
+          <button className="admin-link" onClick={() => navigate('/admin')}>Admin</button>
           <button className="sound-toggle-inline" onClick={toggleSound} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}>
             {soundEnabled ? '🔊' : '🔇'}
           </button>
@@ -792,10 +825,10 @@ function App() {
             )}
 
             <div className="menu-buttons">
-              <button className="btn primary" onClick={() => startGame(true)}>
+              <button className="btn primary" onClick={() => { navigate('/timed'); startGame(true); }}>
                 Timed Mode
               </button>
-              <button className="btn secondary" onClick={() => startGame(false)}>
+              <button className="btn secondary" onClick={() => { navigate('/untimed'); startGame(false); }}>
                 Untimed Mode
               </button>
             </div>
@@ -937,7 +970,7 @@ function App() {
             {renderAllWords()}
           </div>
           <div className="game-over-buttons">
-            <button className="btn primary" onClick={() => setGameState('menu')}>
+            <button className="btn primary" onClick={() => navigate('/')}>
               Play Again
             </button>
             <button className="btn leaderboard-btn" onClick={() => setGameState('leaderboard')}>
@@ -1041,6 +1074,16 @@ function App() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/*" element={<WordTwist />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -146,6 +146,16 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 - **Letter tiles**: 72x72px with 3D shadow effect
 - **Sound toggle**: Fixed position, upper right corner
 
+## URL Routes
+
+Routes are handled client-side with React Router for analytics tracking:
+- `/` - Main menu
+- `/timed` - Timed game mode (starts game immediately)
+- `/untimed` - Untimed game mode (starts game immediately)
+- `/admin` - Admin dashboard (requires login)
+
+Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
+
 ## UI Features
 
 - **Leaderboards**: Separate for Timed and Untimed modes
@@ -223,3 +233,8 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
     - Levels 1-5 use 6-letter puzzles, 6-10 use 7-letter, 11+ use 8-letter
     - API accepts `?level=N` query parameter to generate appropriate puzzle
     - Frontend passes current level when fetching new puzzles
+11. **Client-side routing** (Dec 2024):
+    - Added react-router-dom for distinct URLs per game mode
+    - Routes: `/` (menu), `/timed`, `/untimed`, `/admin`
+    - Enables Matomo to track which game modes are most popular
+    - Direct links to game modes start the game immediately
