@@ -1,4 +1,10 @@
 const dictionary = require('./dictionary');
+const {
+  MIN_WORD_LENGTH,
+  LEVEL_THRESHOLDS,
+  getLetterCountForLevel,
+  MAX_WORDS_PER_LENGTH
+} = require('./constants');
 
 // Puzzle words organized by length for progressive difficulty
 // Each list is deduped by letter signature to ensure uniform puzzle variety
@@ -61,7 +67,7 @@ function computeValidWords(letters) {
   const validWords = [];
 
   dictionary.forEach(word => {
-    if (word.length >= 3 && word.length <= letterArr.length) {
+    if (word.length >= MIN_WORD_LENGTH && word.length <= letterArr.length) {
       if (canFormWord(word, letterArr)) {
         validWords.push(word);
       }
@@ -94,21 +100,15 @@ const allPuzzleWords = [...puzzleWords6, ...puzzleWords7, ...puzzleWords8];
 })();
 
 function generatePuzzle(level = 1) {
-  // Select word list based on level:
-  // Levels 1-5: 6 letters
-  // Levels 6-10: 7 letters
-  // Levels 11+: 8 letters
+  // Select word list based on level using shared constants
+  const targetLength = getLetterCountForLevel(level);
   let wordList;
-  let targetLength;
-  if (level <= 5) {
+  if (targetLength === LEVEL_THRESHOLDS.SIX_LETTERS.letterCount) {
     wordList = puzzleWords6;
-    targetLength = 6;
-  } else if (level <= 10) {
+  } else if (targetLength === LEVEL_THRESHOLDS.SEVEN_LETTERS.letterCount) {
     wordList = puzzleWords7;
-    targetLength = 7;
   } else {
     wordList = puzzleWords8;
-    targetLength = 8;
   }
 
   // Pick a random puzzle word from the appropriate list
@@ -133,8 +133,7 @@ function generatePuzzle(level = 1) {
     wordsByLength[len].push(word);
   });
 
-  // Sort each group alphabetically, then cap at 12 words per length
-  const MAX_WORDS_PER_LENGTH = 12;
+  // Sort each group alphabetically, then cap at MAX_WORDS_PER_LENGTH words per length
   let cappedTotalWords = 0;
   Object.keys(wordsByLength).forEach(len => {
     wordsByLength[len].sort();
@@ -153,8 +152,8 @@ function generatePuzzle(level = 1) {
 function validateWord(word, letters) {
   word = word.toUpperCase();
 
-  // Must be at least 3 letters
-  if (word.length < 3) return false;
+  // Must be at least MIN_WORD_LENGTH letters
+  if (word.length < MIN_WORD_LENGTH) return false;
 
   // Check if word can be formed from available letters
   const availableLetters = [...letters.map(l => l.toUpperCase())];

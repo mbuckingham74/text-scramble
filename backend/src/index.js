@@ -7,6 +7,7 @@ const { RedisStore } = require('rate-limit-redis');
 const { createClient } = require('redis');
 const { generatePuzzle, validateWord, getAllValidWords } = require('./game');
 const dictionary = require('./dictionary');
+const { calculatePoints } = require('./constants');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
@@ -212,11 +213,6 @@ app.get('/api/puzzle', gameLimiter, async (req, res) => {
 
   res.json({ ...puzzle, sessionId });
 });
-
-// Calculate points for a word
-function calculatePoints(wordLength) {
-  return wordLength * 10 + (wordLength - 3) * 5;
-}
 
 // Validate a word submission
 app.post('/api/validate', gameLimiter, validate(validateWordSchema), async (req, res) => {

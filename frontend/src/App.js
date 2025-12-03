@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import sounds from './sounds';
+import {
+  TIMER_DURATION,
+  TIMER_WARNING_THRESHOLD,
+  TIMER_CRITICAL_THRESHOLD,
+  MIN_WORD_LENGTH,
+  calculatePoints,
+  LEVEL_THRESHOLDS
+} from './constants';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
@@ -85,7 +93,7 @@ function WordTwist() {
   const [totalWords, setTotalWords] = useState(0);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [foundFullWord, setFoundFullWord] = useState(false);
@@ -325,7 +333,7 @@ function WordTwist() {
       setSelectedIndices([]);
       setCurrentWord('');
       setFoundFullWord(false);
-      setTimeLeft(timed ? 120 : -1);
+      setTimeLeft(timed ? TIMER_DURATION : -1);
       setGameState('playing');
     } catch (error) {
       console.error('Failed to fetch puzzle:', error);
@@ -419,9 +427,9 @@ function WordTwist() {
   }, []);
 
   const submitWord = useCallback(async () => {
-    if (currentWord.length < 3) {
+    if (currentWord.length < MIN_WORD_LENGTH) {
       sounds.wordInvalid();
-      showMessage('Words must be at least 3 letters!', 'error');
+      showMessage(`Words must be at least ${MIN_WORD_LENGTH} letters!`, 'error');
       clearSelection();
       return;
     }
@@ -447,7 +455,7 @@ function WordTwist() {
         setFoundWords(prev => [...prev, word]);
 
         // Use points from server if provided, otherwise calculate locally
-        const points = data.points || (word.length * 10 + (word.length - 3) * 5);
+        const points = data.points || calculatePoints(word.length);
         setScore(prev => prev + points);
 
         if (word.length === letters.length) {
@@ -517,9 +525,9 @@ function WordTwist() {
     }
 
     // Timer warning sounds
-    if (timeLeft <= 10 && timeLeft > 0) {
+    if (timeLeft <= TIMER_CRITICAL_THRESHOLD && timeLeft > 0) {
       sounds.timerCritical();
-    } else if (timeLeft <= 30 && timeLeft > 0) {
+    } else if (timeLeft <= TIMER_WARNING_THRESHOLD && timeLeft > 0) {
       sounds.timerTick();
     }
 
@@ -859,9 +867,9 @@ function WordTwist() {
             <div className="instructions">
               <h3>Difficulty</h3>
               <ul>
-                <li><strong>Levels 1-5:</strong> 6 letters</li>
-                <li><strong>Levels 6-10:</strong> 7 letters</li>
-                <li><strong>Levels 11+:</strong> 8 letters</li>
+                <li><strong>Levels 1-{LEVEL_THRESHOLDS.SIX_LETTERS.maxLevel}:</strong> {LEVEL_THRESHOLDS.SIX_LETTERS.letterCount} letters</li>
+                <li><strong>Levels {LEVEL_THRESHOLDS.SIX_LETTERS.maxLevel + 1}-{LEVEL_THRESHOLDS.SEVEN_LETTERS.maxLevel}:</strong> {LEVEL_THRESHOLDS.SEVEN_LETTERS.letterCount} letters</li>
+                <li><strong>Levels {LEVEL_THRESHOLDS.SEVEN_LETTERS.maxLevel + 1}+:</strong> {LEVEL_THRESHOLDS.EIGHT_LETTERS.letterCount} letters</li>
               </ul>
               <p className="difficulty-note">Find longer words for more points!</p>
             </div>
@@ -1010,7 +1018,7 @@ function WordTwist() {
                 <span className="label">Score</span>
                 <span className="value">{score.toLocaleString()}</span>
               </div>
-              <div className={`stat timer ${timeLeft <= 30 && timeLeft > 0 ? 'warning' : ''}`}>
+              <div className={`stat timer ${timeLeft <= TIMER_WARNING_THRESHOLD && timeLeft > 0 ? 'warning' : ''}`}>
                 <span className="label">Time</span>
                 <span className="value">{formatTime(timeLeft)}</span>
               </div>
