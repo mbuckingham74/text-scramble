@@ -16,8 +16,10 @@ const PORT = process.env.PORT || 3001;
 
 // Trust proxy - configurable for different proxy chains
 // Default: 2 for Cloudflare -> NPM -> app
-// Set TRUST_PROXY_HOPS to match your proxy chain depth
-const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS) || 2;
+// Set TRUST_PROXY_HOPS to match your proxy chain depth (0 to disable)
+const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined
+  ? Number(process.env.TRUST_PROXY_HOPS)
+  : 2;
 app.set('trust proxy', trustProxyHops);
 
 // Redis client for rate limiting (with fallback to memory store)
@@ -76,7 +78,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    callback(new Error('Not allowed by CORS'));
+    // Return false for disallowed origins (clean denial, no error)
+    callback(null, false);
   },
   credentials: true
 }));
