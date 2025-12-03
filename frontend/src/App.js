@@ -232,7 +232,7 @@ function WordTwist() {
     }
   };
 
-  const refreshAdminStats = async () => {
+  const refreshAdminStats = useCallback(async () => {
     const credentials = safeGetString('wordtwist_admin');
     if (!credentials) return;
 
@@ -250,7 +250,7 @@ function WordTwist() {
     } catch (error) {
       console.error('Failed to refresh admin stats:', error);
     }
-  };
+  }, []);
 
   const handleAdminLogout = () => {
     setAdminStats(null);
@@ -282,34 +282,6 @@ function WordTwist() {
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
-
-  // Handle URL-based routing on initial load or browser navigation
-  const hasInitializedRoute = useRef(false);
-  useEffect(() => {
-    const path = location.pathname;
-
-    // Handle route-based game starts
-    if (path === '/timed' && gameState === 'menu') {
-      startGame(true);
-    } else if (path === '/untimed' && gameState === 'menu') {
-      startGame(false);
-    } else if (path === '/admin') {
-      const credentials = safeGetString('wordtwist_admin');
-      if (credentials && gameState !== 'admin') {
-        refreshAdminStats();
-        setGameState('admin');
-      } else if (!credentials && gameState !== 'adminLogin') {
-        setGameState('adminLogin');
-      }
-    } else if (path === '/' && hasInitializedRoute.current) {
-      // Reset to menu when navigating back to root (after initial load)
-      if (gameState !== 'menu' && gameState !== 'login' && gameState !== 'register' && gameState !== 'leaderboard') {
-        setGameState('menu');
-      }
-    }
-
-    hasInitializedRoute.current = true;
-  }, [location.pathname, gameState, startGame, refreshAdminStats]);
 
   const submitScore = useCallback(async () => {
     const { user, token, sessionId: currentSessionId } = gameStateRef.current;
@@ -370,6 +342,34 @@ function WordTwist() {
     await fetchLeaderboard();
     await startNewRound(timed);
   }, [fetchLeaderboard, startNewRound]);
+
+  // Handle URL-based routing on initial load or browser navigation
+  const hasInitializedRoute = useRef(false);
+  useEffect(() => {
+    const path = location.pathname;
+
+    // Handle route-based game starts
+    if (path === '/timed' && gameState === 'menu') {
+      startGame(true);
+    } else if (path === '/untimed' && gameState === 'menu') {
+      startGame(false);
+    } else if (path === '/admin') {
+      const credentials = safeGetString('wordtwist_admin');
+      if (credentials && gameState !== 'admin') {
+        refreshAdminStats();
+        setGameState('admin');
+      } else if (!credentials && gameState !== 'adminLogin') {
+        setGameState('adminLogin');
+      }
+    } else if (path === '/' && hasInitializedRoute.current) {
+      // Reset to menu when navigating back to root (after initial load)
+      if (gameState !== 'menu' && gameState !== 'login' && gameState !== 'register' && gameState !== 'leaderboard') {
+        setGameState('menu');
+      }
+    }
+
+    hasInitializedRoute.current = true;
+  }, [location.pathname, gameState, startGame, refreshAdminStats]);
 
   const shuffleLetters = useCallback(() => {
     sounds.shuffle();
