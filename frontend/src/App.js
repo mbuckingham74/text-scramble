@@ -35,15 +35,6 @@ const safeGetJSON = (key) => {
   }
 };
 
-const safeGetString = (key) => {
-  if (!storageAvailable) return null;
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-
 const safeSetItem = (key, value) => {
   if (!storageAvailable) return;
   try {
@@ -103,7 +94,6 @@ function WordTwist() {
 
   // Auth state
   const [user, setUser] = useState(() => safeGetJSON('wordtwist_user'));
-  const [token, setToken] = useState(() => safeGetString('wordtwist_token'));
   const [authError, setAuthError] = useState('');
   const [leaderboard, setLeaderboard] = useState({ timed: [], untimed: [] });
   const [apiError, setApiError] = useState(''); // For surfacing API errors to users
@@ -114,12 +104,12 @@ function WordTwist() {
 
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
-  const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, token: null, sessionId: null });
+  const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, sessionId: null });
 
   // Keep refs in sync with state
   useEffect(() => {
-    gameStateRef.current = { score, level, foundWords, timedMode, user, token, sessionId };
-  }, [score, level, foundWords, timedMode, user, token, sessionId]);
+    gameStateRef.current = { score, level, foundWords, timedMode, user, sessionId };
+  }, [score, level, foundWords, timedMode, user, sessionId]);
 
   const showMessage = useCallback((text, type = 'info') => {
     // Clear any existing timeout
@@ -154,14 +144,13 @@ function WordTwist() {
       const data = await apiFetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
-        setToken(data.token);
         safeSetItem('wordtwist_user', JSON.stringify(userData));
-        safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
         navigate('/');
       } else {
@@ -178,14 +167,13 @@ function WordTwist() {
       const data = await apiFetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
       if (data.success) {
         const userData = { userId: data.userId, username: data.username };
         setUser(userData);
-        setToken(data.token);
         safeSetItem('wordtwist_user', JSON.stringify(userData));
-        safeSetItem('wordtwist_token', data.token);
         setGameState('menu');
         navigate('/');
       } else {
@@ -196,11 +184,17 @@ function WordTwist() {
     }
   };
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch(`${API_URL}/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     setUser(null);
-    setToken(null);
     safeRemoveItem('wordtwist_user');
-    safeRemoveItem('wordtwist_token');
   }, []);
 
   const refreshAdminStats = useCallback(async () => {
@@ -293,8 +287,8 @@ function WordTwist() {
   }, [fetchLeaderboard]);
 
   const submitScore = useCallback(async () => {
-    const { user, token, sessionId: currentSessionId } = gameStateRef.current;
-    if (!user || !token) return;
+    const { user, sessionId: currentSessionId } = gameStateRef.current;
+    if (!user) return;
     if (!currentSessionId) {
       console.error('No session ID for score submission');
       setApiError('Game session expired. Score not saved.');
@@ -303,10 +297,8 @@ function WordTwist() {
     try {
       await apiFetch(`${API_URL}/scores`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ sessionId: currentSessionId })
       });
     } catch (error) {

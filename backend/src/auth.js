@@ -16,14 +16,14 @@ function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
+const USER_COOKIE_NAME = 'wordtwist_token';
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+function authMiddleware(req, res, next) {
+  const token = req.cookies[USER_COOKIE_NAME];
+
+  if (!token) {
     return res.status(401).json({ error: 'Authorization required' });
   }
-
-  const token = authHeader.substring(7);
 
   try {
     const decoded = verifyToken(token);
@@ -31,6 +31,7 @@ function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
+      res.clearCookie(USER_COOKIE_NAME, { path: '/api' });
       return res.status(401).json({ error: 'Token expired' });
     }
     return res.status(401).json({ error: 'Invalid token' });
