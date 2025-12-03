@@ -10,6 +10,41 @@ let redisReady = false;
 // In-memory fallback for when Redis is unavailable
 const memorySessions = new Map();
 
+// Lua script for atomic word recording (check + add + increment)
+// Returns: [success (0/1), newScore, errorMessage]
+const RECORD_WORD_SCRIPT = `
+local sessionKey = KEYS[1]
+local wordsKey = KEYS[2]
+local word = ARGV[1]
+local points = tonumber(ARGV[2])
+
+-- Check if session exists
+local sessionData = redis.call('GET', sessionKey)
+if not sessionData then
+  return {0, 0, 'Session expired or invalid'}
+end
+
+-- Check if word already found (atomic set add)
+local added = redis.call('SADD', wordsKey, word)
+if added == 0 then
+  return {0, 0, 'Word already found'}
+end
+
+-- Parse session, update score, save back
+local session = cjson.decode(sessionData)
+session.score = session.score + points
+table.insert(session.foundWords, word)
+
+-- Get TTL and preserve it
+local ttl = redis.call('TTL', sessionKey)
+if ttl > 0 then
+  redis.call('SETEX', sessionKey, ttl, cjson.encode(session))
+  redis.call('EXPIRE', wordsKey, ttl)
+end
+
+return {1, session.score, ''}
+`;
+
 // Generate a secure session ID
 function generateSessionId() {
   return crypto.randomBytes(16).toString('hex');
@@ -26,9 +61,27 @@ function setRedisReady(ready) {
   redisReady = ready;
 }
 
-// Get Redis key for session
+// Get Redis keys for session
 function getRedisKey(sessionId) {
   return `wordtwist:session:${sessionId}`;
+}
+
+function getWordsKey(sessionId) {
+  return `wordtwist:words:${sessionId}`;
+}
+
+// Check memory for session (with expiry check)
+function getMemorySession(sessionId) {
+  const session = memorySessions.get(sessionId);
+  if (!session) return null;
+
+  // Check if expired
+  if (Date.now() - session.createdAt > SESSION_TTL_SECONDS * 1000) {
+    memorySessions.delete(sessionId);
+    return null;
+  }
+
+  return session;
 }
 
 // Create a new game session
@@ -62,82 +115,78 @@ async function createSession(letters, level, gameMode) {
   return sessionId;
 }
 
-// Get a session by ID
+// Get a session by ID - checks both Redis and memory
 async function getSession(sessionId) {
+  // Try Redis first
   if (redisClient && redisReady) {
     try {
       const data = await redisClient.get(getRedisKey(sessionId));
       if (data) {
-        const session = JSON.parse(data);
-        // Convert foundWords back to array if needed
-        return session;
+        return JSON.parse(data);
       }
-      return null;
+      // Redis returned null - session might be in memory (created during outage)
+      // Fall through to memory check
     } catch (err) {
       console.error('Redis session get error, checking memory:', err.message);
+      // Fall through to memory check
     }
   }
 
-  // Memory fallback
-  const session = memorySessions.get(sessionId);
-  if (!session) return null;
-
-  // Check if expired (memory store doesn't auto-expire)
-  if (Date.now() - session.createdAt > SESSION_TTL_SECONDS * 1000) {
-    memorySessions.delete(sessionId);
-    return null;
-  }
-
-  return session;
+  // Always check memory fallback (handles Redis miss or Redis unavailable)
+  return getMemorySession(sessionId);
 }
 
-// Update a session
-async function updateSession(sessionId, session) {
+// Record a found word atomically
+async function recordWord(sessionId, word, points) {
+  const upperWord = word.toUpperCase();
+
+  // Try atomic Redis operation first
   if (redisClient && redisReady) {
     try {
-      // Get remaining TTL and preserve it
-      const ttl = await redisClient.ttl(getRedisKey(sessionId));
-      if (ttl > 0) {
-        await redisClient.setEx(
-          getRedisKey(sessionId),
-          ttl,
-          JSON.stringify(session)
-        );
-        return true;
+      const result = await redisClient.eval(RECORD_WORD_SCRIPT, {
+        keys: [getRedisKey(sessionId), getWordsKey(sessionId)],
+        arguments: [upperWord, points.toString()]
+      });
+
+      const [success, newScore, errorMessage] = result;
+      if (success === 1) {
+        return { success: true, sessionScore: newScore };
       }
-      return false;
+
+      // If session not in Redis, might be in memory - fall through
+      if (errorMessage === 'Session expired or invalid') {
+        const memSession = getMemorySession(sessionId);
+        if (memSession) {
+          // Session is in memory, handle there
+          return recordWordMemory(sessionId, memSession, upperWord, points);
+        }
+      }
+
+      return { success: false, error: errorMessage };
     } catch (err) {
-      console.error('Redis session update error, falling back to memory:', err.message);
+      console.error('Redis recordWord error, falling back to memory:', err.message);
+      // Fall through to memory
     }
   }
 
   // Memory fallback
-  if (memorySessions.has(sessionId)) {
-    memorySessions.set(sessionId, session);
-    return true;
-  }
-  return false;
-}
-
-// Record a found word and return points earned (0 if already found or invalid)
-async function recordWord(sessionId, word, points) {
-  const session = await getSession(sessionId);
+  const session = getMemorySession(sessionId);
   if (!session) {
     return { success: false, error: 'Session expired or invalid' };
   }
 
-  const upperWord = word.toUpperCase();
-  if (session.foundWords.includes(upperWord)) {
+  return recordWordMemory(sessionId, session, upperWord, points);
+}
+
+// Record word in memory (for fallback)
+function recordWordMemory(sessionId, session, word, points) {
+  if (session.foundWords.includes(word)) {
     return { success: false, error: 'Word already found' };
   }
 
-  session.foundWords.push(upperWord);
+  session.foundWords.push(word);
   session.score += points;
-
-  const updated = await updateSession(sessionId, session);
-  if (!updated) {
-    return { success: false, error: 'Failed to update session' };
-  }
+  memorySessions.set(sessionId, session);
 
   return { success: true, sessionScore: session.score };
 }
@@ -162,20 +211,23 @@ async function endSession(sessionId) {
   const summary = await getSessionSummary(sessionId);
   if (!summary) return null;
 
-  // Delete the session
+  // Delete from Redis
   if (redisClient && redisReady) {
     try {
       await redisClient.del(getRedisKey(sessionId));
+      await redisClient.del(getWordsKey(sessionId));
     } catch (err) {
       console.error('Redis session delete error:', err.message);
     }
   }
+
+  // Always delete from memory too
   memorySessions.delete(sessionId);
 
   return summary;
 }
 
-// Get session count (for monitoring) - approximate for Redis
+// Get session count (for monitoring)
 async function getSessionCount() {
   let count = memorySessions.size;
 
