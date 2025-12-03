@@ -8,7 +8,7 @@
 
 /* Sound Toggle */
 .sound-toggle {
-  position: absolute;
+  position: fixed;
   top: 20px;
   right: 20px;
   background: rgba(255, 255, 255, 0.1);
@@ -19,6 +19,7 @@
   font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  z-index: 100;
 }
 
 .sound-toggle:hover {
