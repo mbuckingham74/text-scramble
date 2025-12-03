@@ -183,7 +183,6 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - **API response handling**: `apiFetch` now handles 204 No Content and empty responses correctly, checks Content-Type before parsing JSON
    - **401/expired token handling**: Added `handleAuthError()` that logs user out and shows error when JWT expires or is invalid
    - **User-visible API errors**: Added `apiError` state and dismissible red banner at top of screen. Errors from leaderboard fetch, score submit, and puzzle load are now shown to users instead of silently logged
-   - **Dockerfile optimization**: Changed `npm install` to `npm ci` for reproducible builds from lockfile
 7. **Backend robustness improvements** (Dec 2024):
    - **Bug fix**: `/api/solutions` was passing array to `getAllValidWords()` which expects a string - now joins array first
    - **Security**: Backend Dockerfile now sets `NODE_ENV=production` so JWT_SECRET and DB credential checks are enforced
