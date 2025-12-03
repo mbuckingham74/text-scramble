@@ -17,8 +17,9 @@ const PORT = process.env.PORT || 3001;
 // Trust proxy - configurable for different proxy chains
 // Default: 2 for Cloudflare -> NPM -> app
 // Set TRUST_PROXY_HOPS to match your proxy chain depth (0 to disable)
-const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined
-  ? Number(process.env.TRUST_PROXY_HOPS)
+const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
+const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined && !isNaN(parsedHops)
+  ? parsedHops
   : 2;
 app.set('trust proxy', trustProxyHops);
 
