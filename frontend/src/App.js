@@ -10,6 +10,10 @@ import {
   calculatePoints,
   LEVEL_THRESHOLDS
 } from './constants';
+import WordSlots from './components/WordSlots';
+import LeaderboardList from './components/LeaderboardList';
+import LeaderboardTable from './components/LeaderboardTable';
+import LetterTile from './components/LetterTile';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
@@ -575,54 +579,6 @@ function WordTwist() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Render word slots
-  const renderWordSlots = () => {
-    const lengths = Object.keys(wordsByLength).sort((a, b) => a - b);
-
-    return lengths.map(length => (
-      <div key={length} className="word-group">
-        <h3>{length} Letters</h3>
-        <div className="word-slots">
-          {wordsByLength[length].map((word, idx) => {
-            const upperWord = word.toUpperCase();
-            const isFound = foundWords.includes(upperWord);
-            return (
-              <div
-                key={idx}
-                className={`word-slot ${isFound ? 'found' : ''}`}
-              >
-                {isFound ? upperWord : word.replace(/./g, '_')}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    ));
-  };
-
-  // Render end screen word list (shows all words in slots with found/missed styling)
-  const renderAllWords = () => {
-    const lengths = Object.keys(wordsByLength).sort((a, b) => a - b);
-    return lengths.map(length => (
-      <div key={length} className="word-group">
-        <h3>{length} Letters</h3>
-        <div className="word-slots">
-          {wordsByLength[length].map((word, idx) => {
-            const upperWord = word.toUpperCase();
-            const isFound = foundWords.includes(upperWord);
-            return (
-              <div
-                key={idx}
-                className={`word-slot ${isFound ? 'found' : 'missed'}`}
-              >
-                {upperWord}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    ));
-  };
 
   // Login screen
   if (gameState === 'login') {
@@ -760,45 +716,13 @@ function WordTwist() {
 
   // Leaderboard screen
   if (gameState === 'leaderboard') {
-    const renderLeaderboardTable = (entries, title) => (
-      <div className="leaderboard-section">
-        <h2>{title}</h2>
-        {entries.length === 0 ? (
-          <p className="no-scores">No scores yet. Be the first!</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th>Score</th>
-                <th>Level</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry, idx) => (
-                <tr key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                  <td>{idx + 1}</td>
-                  <td>{entry.username}</td>
-                  <td>{entry.score.toLocaleString()}</td>
-                  <td>{entry.level}</td>
-                  <td>{new Date(entry.created_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    );
-
     return (
       <div className="app">
         <div className="leaderboard-screen wide">
           <h1>Leaderboards</h1>
           <div className="leaderboard-tables">
-            {renderLeaderboardTable(leaderboard.timed, 'Timed Mode')}
-            {renderLeaderboardTable(leaderboard.untimed, 'Untimed Mode')}
+            <LeaderboardTable entries={leaderboard.timed} title="Timed Mode" currentUser={user} />
+            <LeaderboardTable entries={leaderboard.untimed} title="Untimed Mode" currentUser={user} />
           </div>
           <button className="btn primary" onClick={() => navigate('/')}>Back to Menu</button>
         </div>
@@ -874,39 +798,9 @@ function WordTwist() {
               <p className="difficulty-note">Find longer words for more points!</p>
             </div>
 
-            <div className="menu-leaderboard">
-              <h2>Timed</h2>
-              {leaderboard.timed.length === 0 ? (
-                <p className="no-scores">No scores yet!</p>
-              ) : (
-                <ol className="menu-leaderboard-list">
-                  {leaderboard.timed.map((entry, idx) => (
-                    <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                      <span className="rank">{idx + 1}.</span>
-                      <span className="name">{entry.username}</span>
-                      <span className="score">{entry.score.toLocaleString()}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
+            <LeaderboardList entries={leaderboard.timed} title="Timed" currentUser={user} />
 
-            <div className="menu-leaderboard">
-              <h2>Untimed</h2>
-              {leaderboard.untimed.length === 0 ? (
-                <p className="no-scores">No scores yet!</p>
-              ) : (
-                <ol className="menu-leaderboard-list">
-                  {leaderboard.untimed.map((entry, idx) => (
-                    <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                      <span className="rank">{idx + 1}.</span>
-                      <span className="name">{entry.username}</span>
-                      <span className="score">{entry.score.toLocaleString()}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
+            <LeaderboardList entries={leaderboard.untimed} title="Untimed" currentUser={user} />
         </div>
       </div>
     </div>
@@ -925,7 +819,7 @@ function WordTwist() {
           </div>
           <div className="all-words">
             <h2>All Words</h2>
-            {renderAllWords()}
+            <WordSlots wordsByLength={wordsByLength} foundWords={foundWords} revealAll />
           </div>
           <button
             className="btn primary"
@@ -983,7 +877,7 @@ function WordTwist() {
           </div>
           <div className="all-words">
             <h2>All Words</h2>
-            {renderAllWords()}
+            <WordSlots wordsByLength={wordsByLength} foundWords={foundWords} revealAll />
           </div>
           <div className="game-over-buttons">
             <button className="btn primary" onClick={() => navigate('/')}>
@@ -1036,7 +930,7 @@ function WordTwist() {
           )}
 
           <div className="word-display">
-            {renderWordSlots()}
+            <WordSlots wordsByLength={wordsByLength} foundWords={foundWords} />
           </div>
 
           <div className="current-word">
@@ -1047,14 +941,12 @@ function WordTwist() {
 
           <div className="letter-rack">
             {letters.map((letter, index) => (
-              <button
+              <LetterTile
                 key={index}
-                className={`letter-tile ${selectedIndices.includes(index) ? 'selected' : ''}`}
+                letter={letter}
+                selected={selectedIndices.includes(index)}
                 onClick={() => selectLetter(index)}
-                disabled={selectedIndices.includes(index)}
-              >
-                {letter}
-              </button>
+              />
             ))}
           </div>
 
@@ -1072,22 +964,12 @@ function WordTwist() {
           )}
         </div>
 
-        <aside className="leaderboard-sidebar">
-          <h3>{timedMode ? 'Timed' : 'Untimed'} Top 10</h3>
-          {(timedMode ? leaderboard.timed : leaderboard.untimed).length === 0 ? (
-            <p className="no-scores">No scores yet!</p>
-          ) : (
-            <ol className="sidebar-leaderboard">
-              {(timedMode ? leaderboard.timed : leaderboard.untimed).map((entry, idx) => (
-                <li key={entry.id} className={user && entry.username === user.username ? 'current-user' : ''}>
-                  <span className="rank">{idx + 1}.</span>
-                  <span className="name">{entry.username}</span>
-                  <span className="score">{entry.score.toLocaleString()}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </aside>
+        <LeaderboardList
+          entries={timedMode ? leaderboard.timed : leaderboard.untimed}
+          title={`${timedMode ? 'Timed' : 'Untimed'} Top 10`}
+          currentUser={user}
+          className="leaderboard-sidebar"
+        />
       </div>
     </div>
   );
