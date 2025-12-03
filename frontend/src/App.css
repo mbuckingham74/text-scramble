@@ -325,6 +325,7 @@
   max-width: 1300px;
   width: 100%;
   position: relative;
+  padding-right: 230px; /* Space for absolutely positioned sidebar */
 }
 
 /* Game Styles */
@@ -1043,6 +1044,10 @@
 @media (max-width: 900px) {
   .leaderboard-sidebar {
     display: none;
+  }
+
+  .game-layout {
+    padding-right: 0;
   }
 
   .menu-content {
