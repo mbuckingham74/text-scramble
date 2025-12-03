@@ -33,7 +33,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '10kb' }));
 
-// Rate limiting for auth endpoints
+// Rate limiting for auth endpoints (strictest)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 attempts per window
@@ -42,34 +42,51 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// General rate limiter
+// Rate limiter for game endpoints (puzzle, validate, solutions)
+const gameLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute (1 per second average)
+  message: { error: 'Too many game requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Rate limiter for score submission
+const scoreLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 score submissions per minute
+  message: { error: 'Too many score submissions' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// General rate limiter for other endpoints (leaderboard, health)
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute
+  max: 120, // 120 requests per minute
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false
 });
 
-app.use(generalLimiter);
-
 // Generate a new puzzle
-app.get('/api/puzzle', (req, res) => {
+app.get('/api/puzzle', gameLimiter, (req, res) => {
   const puzzle = generatePuzzle();
   res.json(puzzle);
 });
 
 // Validate a word submission
-app.post('/api/validate', validate(validateWordSchema), (req, res) => {
+app.post('/api/validate', gameLimiter, validate(validateWordSchema), (req, res) => {
   const { word, letters } = req.validated;
   const isValid = validateWord(word, letters);
   res.json({ valid: isValid, word: word.toUpperCase() });
 });
 
 // Get all valid words for a set of letters (for end of round reveal)
-app.post('/api/solutions', validate(solutionsSchema), (req, res) => {
+app.post('/api/solutions', gameLimiter, validate(solutionsSchema), (req, res) => {
   const { letters } = req.validated;
-  const words = getAllValidWords(letters);
+  // letters is an array, getAllValidWords expects a string
+  const words = getAllValidWords(letters.join(''));
   res.json({ words });
 });
 
@@ -124,7 +141,7 @@ app.post('/api/login', authLimiter, validate(loginSchema), async (req, res) => {
 });
 
 // Submit a score (requires auth)
-app.post('/api/scores', authMiddleware, validate(scoreSchema), async (req, res) => {
+app.post('/api/scores', scoreLimiter, authMiddleware, validate(scoreSchema), async (req, res) => {
   const { score, level, wordsFound, gameMode } = req.validated;
   const userId = req.user.userId; // From JWT token, not request body
 
@@ -141,7 +158,7 @@ app.post('/api/scores', authMiddleware, validate(scoreSchema), async (req, res) 
 });
 
 // Get leaderboard (top 10 scores per mode) - public
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', generalLimiter, async (req, res) => {
   try {
     const [timedRows] = await db.execute(`
       SELECT s.id, s.score, s.level, s.words_found, s.game_mode, s.created_at, u.username
@@ -167,7 +184,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // Get current user's best scores (requires auth)
-app.get('/api/scores/me', authMiddleware, async (req, res) => {
+app.get('/api/scores/me', generalLimiter, authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
   try {
@@ -185,7 +202,7 @@ app.get('/api/scores/me', authMiddleware, async (req, res) => {
   }
 });
 
-// Health check
+// Health check (no rate limit - used for monitoring)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });

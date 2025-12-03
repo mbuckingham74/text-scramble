@@ -19,6 +19,52 @@ const puzzleWords = [
   'CERIAS', 'ERICAS', 'SATIRE', 'STRIAE', 'TERAIS', 'AIREST', 'ARIOSE', 'SORTIE'
 ];
 
+// Get letter signature for cache key (sorted uppercase letters)
+function getLetterSignature(letters) {
+  if (Array.isArray(letters)) {
+    return letters.map(l => l.toUpperCase()).sort().join('');
+  }
+  return letters.toUpperCase().split('').sort().join('');
+}
+
+// Precompute valid words for all puzzle words at startup
+// This avoids scanning 30K dictionary words on every request
+const puzzleCache = new Map();
+
+function computeValidWords(letters) {
+  const letterArr = letters.toUpperCase().split('');
+  const validWords = [];
+
+  dictionary.forEach(word => {
+    if (word.length >= 3 && word.length <= letterArr.length) {
+      if (canFormWord(word, letterArr)) {
+        validWords.push(word);
+      }
+    }
+  });
+
+  return validWords.sort((a, b) => {
+    if (a.length !== b.length) return a.length - b.length;
+    return a.localeCompare(b);
+  });
+}
+
+// Build cache at startup
+(function initCache() {
+  const startTime = Date.now();
+  const seen = new Set();
+
+  for (const word of puzzleWords) {
+    const sig = getLetterSignature(word);
+    if (!seen.has(sig)) {
+      seen.add(sig);
+      puzzleCache.set(sig, computeValidWords(word));
+    }
+  }
+
+  console.log(`Puzzle cache built: ${puzzleCache.size} unique signatures in ${Date.now() - startTime}ms`);
+})();
+
 function generatePuzzle() {
   // Pick a random puzzle word
   const baseWord = puzzleWords[Math.floor(Math.random() * puzzleWords.length)];
@@ -30,8 +76,9 @@ function generatePuzzle() {
     [letters[i], letters[j]] = [letters[j], letters[i]];
   }
 
-  // Find all valid words
-  const validWords = getAllValidWords(letters.join(''));
+  // Get valid words from cache (or compute if somehow missing)
+  const sig = getLetterSignature(letters);
+  const validWords = puzzleCache.get(sig) || computeValidWords(letters.join(''));
 
   // Group by length
   const wordsByLength = {};
@@ -73,22 +120,15 @@ function validateWord(word, letters) {
 }
 
 function getAllValidWords(letters) {
-  const letterArr = letters.toUpperCase().split('');
-  const validWords = [];
+  // Check cache first (covers all puzzle words)
+  const sig = getLetterSignature(letters);
+  const cached = puzzleCache.get(sig);
+  if (cached) {
+    return cached;
+  }
 
-  // Check each word in dictionary
-  dictionary.forEach(word => {
-    if (word.length >= 3 && word.length <= letterArr.length) {
-      if (canFormWord(word, letterArr)) {
-        validWords.push(word);
-      }
-    }
-  });
-
-  return validWords.sort((a, b) => {
-    if (a.length !== b.length) return a.length - b.length;
-    return a.localeCompare(b);
-  });
+  // Fallback to computation for non-cached letter combinations
+  return computeValidWords(letters);
 }
 
 function canFormWord(word, letters) {

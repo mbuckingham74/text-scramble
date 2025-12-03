@@ -151,11 +151,16 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 ## Security Features (Dec 2024)
 
 - JWT authentication for score submission
-- Rate limiting: 10 auth attempts per 15 min, 100 general requests per min
+- Per-route rate limiting:
+  - Auth endpoints: 10 attempts per 15 min
+  - Game endpoints (puzzle/validate/solutions): 60 per min
+  - Score submission: 10 per min
+  - General (leaderboard, etc): 120 per min
 - CORS restricted to twist.tachyonfuture.com and localhost
 - Zod input validation on all endpoints
 - Environment variables required in production (no hardcoded credentials)
 - Password hashing with bcrypt (10 rounds)
+- Backend Dockerfile sets NODE_ENV=production to enforce security checks
 
 ## Recent Changes (Dec 2024)
 
@@ -179,3 +184,9 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - **401/expired token handling**: Added `handleAuthError()` that logs user out and shows error when JWT expires or is invalid
    - **User-visible API errors**: Added `apiError` state and dismissible red banner at top of screen. Errors from leaderboard fetch, score submit, and puzzle load are now shown to users instead of silently logged
    - **Dockerfile optimization**: Changed `npm install` to `npm ci` for reproducible builds from lockfile
+7. **Backend robustness improvements** (Dec 2024):
+   - **Bug fix**: `/api/solutions` was passing array to `getAllValidWords()` which expects a string - now joins array first
+   - **Security**: Backend Dockerfile now sets `NODE_ENV=production` so JWT_SECRET and DB credential checks are enforced
+   - **Rate limiting**: Replaced single global limiter with per-route limiters (auth, game, score, general)
+   - **Dockerfile optimization**: Changed `npm install` to `npm ci` for reproducible builds
+   - **Performance**: Precompute valid words for all puzzle words at startup and cache by letter signature. Eliminates 30K dictionary scans on every `/api/puzzle` and `/api/solutions` request
