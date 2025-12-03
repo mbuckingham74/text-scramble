@@ -7,6 +7,7 @@ A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
 - **Frontend**: React (Create React App), served via Nginx
 - **Backend**: Node.js/Express API with JWT authentication
 - **Database**: MySQL 8
+- **Cache/Rate Limiting**: Redis (shared with Authelia, using database 1)
 - **Deployment**: Docker Compose on tachyonfuture.com server
 - **SSL**: Nginx Proxy Manager (NPM) handles SSL termination
 - **Analytics**: Matomo (site ID 10 on matomo.tachyonfuture.com)
@@ -99,6 +100,7 @@ scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'
 | `DB_PASSWORD` | Yes | MySQL password |
 | `DB_NAME` | Yes | MySQL database name |
 | `NODE_ENV` | Recommended | Set to `production` for prod |
+| `REDIS_URL` | Optional | Redis URL for rate limiting (falls back to in-memory) |
 
 Generate JWT secret: `openssl rand -base64 32`
 
@@ -155,16 +157,17 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
 ## Security Features (Dec 2024)
 
 - JWT authentication for score submission
-- Per-route rate limiting:
+- Per-route rate limiting (Redis-backed with MemoryStore fallback):
   - Auth endpoints: 10 attempts per 15 min
-  - Game endpoints (puzzle/validate/solutions): 60 per min
-  - Score submission: 10 per min
-  - General (leaderboard, etc): 120 per min
+  - Game endpoints (puzzle/validate/solutions): 300 per min
+  - Score submission: 20 per min
+  - General (leaderboard, etc): 200 per min
 - CORS restricted to twist.tachyonfuture.com and localhost
 - Zod input validation on all endpoints
 - Environment variables required in production (no hardcoded credentials)
 - Password hashing with bcrypt (10 rounds)
 - Backend Dockerfile sets NODE_ENV=production to enforce security checks
+- Express trust proxy enabled for multi-proxy chains (Cloudflare → NPM → app)
 
 ## Recent Changes (Dec 2024)
 
@@ -198,3 +201,11 @@ ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f back
    - Features bouncing trophy icon, animated pop-in, rank display
    - Shows score with locale formatting and game mode
    - Detection happens in `endRound()` after score submission and leaderboard refresh
+9. **Redis rate limiting** (Dec 2024):
+   - Rate limiting now uses Redis (reuses existing Authelia Redis on database 1)
+   - Keys prefixed with `wordtwist:<limiter>:` to avoid conflicts
+   - Graceful fallback to MemoryStore if Redis unavailable
+   - Connection state tracked via `redisReady` flag with event handlers
+   - Backend connects via external `authelia_authelia-backend` Docker network
+   - Increased rate limits for better gameplay (game: 300/min, score: 20/min)
+   - Fixed `trust proxy` to `true` for multi-hop reverse proxy chains
