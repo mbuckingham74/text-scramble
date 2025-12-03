@@ -30,12 +30,12 @@ This document tracks the backend security and reliability issues identified duri
 **Solution**: Deduped puzzle words by letter signature. Final counts: 64 unique 6-letter, 58 unique 7-letter, 45 unique 8-letter signatures.
 
 ### 6. ✅ Hardcoded trust proxy (LOW)
-**Status**: Fixed
-**Solution**: Added `TRUST_PROXY_HOPS` env var support. Defaults to 2 (Cloudflare → NPM → app).
+**Status**: Fixed in PR #4
+**Solution**: Added `TRUST_PROXY_HOPS` env var support. Defaults to 2 (Cloudflare → NPM → app). Supports 0 to disable, falls back to default on invalid values.
 
 ### 7. ✅ Hardcoded CORS origins (LOW)
-**Status**: Fixed
-**Solution**: Added `CORS_ORIGINS` env var support (comma-separated). Defaults to twist.tachyonfuture.com + localhost.
+**Status**: Fixed in PR #4
+**Solution**: Added `CORS_ORIGINS` env var support (comma-separated). Defaults to twist.tachyonfuture.com + localhost. Clean denial (no 500 error) for disallowed origins.
 
 ### 8. ✅ Weak dev defaults for secrets (LOW)
 **Status**: Already addressed
@@ -61,6 +61,11 @@ This document tracks the backend security and reliability issues identified duri
 - `/api/validate` uses server-stored letters (not client-provided)
 - `/api/scores` requires valid sessionId (no legacy fallback)
 - Hybrid rate limiter checks Redis availability per-request
+
+### PR #4 - Configuration Cleanup (Merged)
+- `TRUST_PROXY_HOPS` env var for proxy chain depth (0 to disable, NaN-safe)
+- `CORS_ORIGINS` env var for allowed origins (comma-separated)
+- Clean CORS denial (returns false instead of throwing error)
 
 ## Remaining Work
 
