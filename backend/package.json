@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node src/game.test.js && node src/constants.test.js"
+    "test": "node src/game.test.js && node src/constants.test.js && node src/session.test.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -247,6 +247,7 @@ app.post('/api/validate', gameLimiter, validate(validateWordSchema), async (req,
 
   // Check if timed session has exceeded time limit
   if (isTimedSessionExpired(session)) {
+    await endSession(sessionId); // Clean up stale session
     return res.status(400).json({ valid: false, word: upperWord, error: 'Time expired' });
   }
 
@@ -276,6 +277,12 @@ app.post('/api/solutions', gameLimiter, validate(solutionsSchema), async (req, r
   const session = await getSession(sessionId);
   if (!session) {
     return res.status(400).json({ error: 'Invalid or expired session' });
+  }
+
+  // Check if timed session has exceeded time limit
+  if (isTimedSessionExpired(session)) {
+    await endSession(sessionId); // Clean up stale session
+    return res.status(400).json({ error: 'Time expired' });
   }
 
   const words = getAllValidWords(session.letters.join(''));
