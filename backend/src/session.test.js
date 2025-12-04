@@ -2,7 +2,7 @@
 const assert = require('assert');
 
 // Import the module to test
-const { isTimedSessionExpired } = require('./session');
+const { isTimedSessionExpired, TIMED_MODE_GRACE_SECONDS } = require('./session');
 const { TIMER_DURATION } = require('./constants');
 
 console.log('Running session.js tests...\n');
@@ -21,9 +21,6 @@ function test(name, fn) {
     failed++;
   }
 }
-
-// Grace period matches session.js (5 seconds)
-const GRACE_SECONDS = 5;
 
 // Test: Untimed sessions never expire due to timer
 test('isTimedSessionExpired returns false for untimed sessions regardless of time', () => {
@@ -56,7 +53,7 @@ test('isTimedSessionExpired returns false at exactly TIMER_DURATION', () => {
 test('isTimedSessionExpired returns false within grace period', () => {
   const session = {
     gameMode: 'timed',
-    createdAt: Date.now() - (TIMER_DURATION + GRACE_SECONDS - 1) * 1000
+    createdAt: Date.now() - (TIMER_DURATION + TIMED_MODE_GRACE_SECONDS - 1) * 1000
   };
   assert.strictEqual(isTimedSessionExpired(session), false);
 });
@@ -65,7 +62,7 @@ test('isTimedSessionExpired returns false within grace period', () => {
 test('isTimedSessionExpired returns true after grace period', () => {
   const session = {
     gameMode: 'timed',
-    createdAt: Date.now() - (TIMER_DURATION + GRACE_SECONDS + 1) * 1000
+    createdAt: Date.now() - (TIMER_DURATION + TIMED_MODE_GRACE_SECONDS + 1) * 1000
   };
   assert.strictEqual(isTimedSessionExpired(session), true);
 });

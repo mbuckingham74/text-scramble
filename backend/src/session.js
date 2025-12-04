@@ -383,6 +383,7 @@ module.exports = {
   endSession,
   getSessionCount,
   isTimedSessionExpired,
+  TIMED_MODE_GRACE_SECONDS,
   // Admin session exports
   createAdminSession,
   validateAdminSession,
