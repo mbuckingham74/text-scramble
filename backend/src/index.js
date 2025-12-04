@@ -16,26 +16,24 @@ const { initSessionStore, setRedisReady, createSession, getSession, recordWord, 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - REQUIRED in production to ensure correct client IP detection
+// Trust proxy configuration for correct client IP detection behind reverse proxies
 // Set TRUST_PROXY_HOPS to match your exact proxy chain depth:
 //   1 = NPM -> app
 //   2 = Cloudflare -> NPM -> app
 // Wrong values cause either IP spoofing (too high) or broken rate limiting (too low/missing)
 const isProduction = process.env.NODE_ENV === 'production';
 
-if (isProduction && !process.env.TRUST_PROXY_HOPS) {
-  console.error('FATAL: TRUST_PROXY_HOPS must be set in production.');
-  console.error('Set to your proxy chain depth (e.g., 1 for NPM -> app, 2 for Cloudflare -> NPM -> app)');
-  process.exit(1);
+if (process.env.TRUST_PROXY_HOPS) {
+  const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
+  if (isNaN(parsedHops)) {
+    console.error(`FATAL: TRUST_PROXY_HOPS must be a number, got: "${process.env.TRUST_PROXY_HOPS}"`);
+    process.exit(1);
+  }
+  app.set('trust proxy', parsedHops);
+} else if (isProduction) {
+  console.warn('WARNING: TRUST_PROXY_HOPS not set in production. Rate limiting may not work correctly behind a proxy.');
+  console.warn('Set to your proxy chain depth (e.g., 1 for NPM -> app, 2 for Cloudflare -> NPM -> app)');
 }
-
-const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
-if (process.env.TRUST_PROXY_HOPS && isNaN(parsedHops)) {
-  console.error(`FATAL: TRUST_PROXY_HOPS must be a number, got: "${process.env.TRUST_PROXY_HOPS}"`);
-  process.exit(1);
-}
-const trustProxyHops = parsedHops || 0;
-app.set('trust proxy', trustProxyHops);
 
 // Redis client for rate limiting (with fallback to memory store)
 let redisClient = null;
@@ -453,12 +451,18 @@ app.get('/api/health', (req, res) => {
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
+// Cookie secure flag - defaults to true in production, but can be explicitly set via COOKIE_SECURE
+// Set COOKIE_SECURE=false for HTTP-only deployments (not recommended for production)
+const cookieSecure = process.env.COOKIE_SECURE !== undefined
+  ? process.env.COOKIE_SECURE === 'true'
+  : isProduction;
+
 // Cookie settings for admin session
 const ADMIN_COOKIE_NAME = 'wordtwist_admin_session';
 const adminCookieOptions = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? 'strict' : 'lax',
+  secure: cookieSecure,
+  sameSite: cookieSecure ? 'strict' : 'lax',
   maxAge: ADMIN_SESSION_TTL_MS,
   path: '/api/admin'
 };
@@ -468,8 +472,8 @@ const USER_COOKIE_NAME = 'wordtwist_token';
 const USER_JWT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 const userCookieOptions = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? 'strict' : 'lax',
+  secure: cookieSecure,
+  sameSite: cookieSecure ? 'strict' : 'lax',
   maxAge: USER_JWT_TTL_MS,
   path: '/api'
 };

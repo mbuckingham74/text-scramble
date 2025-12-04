@@ -110,8 +110,9 @@ scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'
 | `REDIS_URL` | Optional | Redis URL for rate limiting (falls back to in-memory) |
 | `ADMIN_USERNAME` | Optional | Admin dashboard username |
 | `ADMIN_PASSWORD` | Optional | Admin dashboard password |
-| `TRUST_PROXY_HOPS` | Yes (prod) | Number of proxy hops - REQUIRED in production (1 for NPM → app, 2 for Cloudflare → NPM → app) |
+| `TRUST_PROXY_HOPS` | Recommended | Number of proxy hops for correct IP detection (1 for NPM → app, 2 for Cloudflare → NPM → app). Warns if not set in production. |
 | `CORS_ORIGINS` | Optional | Comma-separated allowed origins (default: twist.tachyonfuture.com + localhost) |
+| `COOKIE_SECURE` | Optional | Set to `false` for HTTP-only deployments. Defaults to `true` in production. |
 
 Generate JWT secret: `openssl rand -base64 32`
 

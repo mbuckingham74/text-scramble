@@ -1,6 +1,9 @@
 /**
  * Tests to verify frontend/backend constants stay in sync
  * Run with: node src/constants.test.js
+ *
+ * Note: This test requires the frontend directory to be present.
+ * When running backend tests in isolation (e.g., Docker build), this test is skipped.
  */
 
 const assert = require('assert');
@@ -11,6 +14,14 @@ const backendConstants = require('./constants');
 
 // Read frontend constants file as text (it's ES modules, can't require it)
 const frontendConstantsPath = path.join(__dirname, '../../frontend/src/constants.js');
+
+// Skip tests if frontend is not present (e.g., isolated backend Docker build)
+if (!fs.existsSync(frontendConstantsPath)) {
+  console.log('Skipping constants sync tests: frontend/src/constants.js not found');
+  console.log('This is expected when running backend tests in isolation.');
+  process.exit(0);
+}
+
 const frontendSource = fs.readFileSync(frontendConstantsPath, 'utf-8');
 
 let passed = 0;
