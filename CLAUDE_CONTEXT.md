@@ -105,7 +105,7 @@ scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'
 | `REDIS_URL` | Optional | Redis URL for rate limiting (falls back to in-memory) |
 | `ADMIN_USERNAME` | Optional | Admin dashboard username |
 | `ADMIN_PASSWORD` | Optional | Admin dashboard password |
-| `TRUST_PROXY_HOPS` | Optional | Number of proxy hops (default: 2 for Cloudflare → NPM → app) |
+| `TRUST_PROXY_HOPS` | Yes (prod) | Number of proxy hops - REQUIRED in production (1 for NPM → app, 2 for Cloudflare → NPM → app) |
 | `CORS_ORIGINS` | Optional | Comma-separated allowed origins (default: twist.tachyonfuture.com + localhost) |
 
 Generate JWT secret: `openssl rand -base64 32`
@@ -188,7 +188,7 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
 - Environment variables required in production (no hardcoded credentials)
 - Password hashing with bcrypt (10 rounds)
 - Backend Dockerfile sets NODE_ENV=production to enforce security checks
-- Express `trust proxy` set to `2` for the proxy chain (Cloudflare → NPM → app)
+- Express `trust proxy` requires explicit `TRUST_PROXY_HOPS` config in production (1 for NPM → app)
 
 ## Recent Changes (Dec 2024)
 
@@ -229,7 +229,7 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
    - Connection state tracked via `redisReady` flag with event handlers
    - Backend connects via external `authelia_authelia-backend` Docker network
    - Increased rate limits for better gameplay (game: 300/min, score: 20/min)
-   - Fixed `trust proxy` to `2` (number of proxies) for express-rate-limit v7 compatibility
+   - `trust proxy` now requires explicit `TRUST_PROXY_HOPS` env var in production (prevents IP spoofing)
 10. **Progressive difficulty** (Dec 2024):
     - Expanded dictionary from ~30K words (3-6 letters) to ~53K words (3-8 letters)
     - Sourced from `/usr/share/dict/words`, filtering out proper nouns
