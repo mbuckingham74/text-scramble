@@ -248,13 +248,23 @@ async function endSession(sessionId) {
 }
 
 // Get session count (for monitoring)
+// Uses SCAN instead of KEYS to avoid blocking Redis at scale
 async function getSessionCount() {
   let count = memorySessions.size;
 
   if (redisClient && redisReady) {
     try {
-      const keys = await redisClient.keys('wordtwist:session:*');
-      count = keys.length;
+      let cursor = 0;
+      let redisCount = 0;
+      do {
+        const result = await redisClient.scan(cursor, {
+          MATCH: 'wordtwist:session:*',
+          COUNT: 100
+        });
+        cursor = result.cursor;
+        redisCount += result.keys.length;
+      } while (cursor !== 0);
+      count = redisCount;
     } catch (err) {
       console.error('Redis session count error:', err.message);
     }
