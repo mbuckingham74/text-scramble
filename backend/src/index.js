@@ -16,13 +16,21 @@ const { initSessionStore, setRedisReady, createSession, getSession, recordWord, 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - configurable for different proxy chains
-// Default: 2 for Cloudflare -> NPM -> app
-// Set TRUST_PROXY_HOPS to match your proxy chain depth (0 to disable)
+// Trust proxy - REQUIRED in production to ensure correct client IP detection
+// Set TRUST_PROXY_HOPS to match your exact proxy chain depth:
+//   1 = NPM -> app
+//   2 = Cloudflare -> NPM -> app
+// Wrong values cause either IP spoofing (too high) or broken rate limiting (too low/missing)
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && !process.env.TRUST_PROXY_HOPS) {
+  console.error('FATAL: TRUST_PROXY_HOPS must be set in production.');
+  console.error('Set to your proxy chain depth (e.g., 1 for NPM -> app, 2 for Cloudflare -> NPM -> app)');
+  process.exit(1);
+}
+
 const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
-const trustProxyHops = process.env.TRUST_PROXY_HOPS !== undefined && !isNaN(parsedHops)
-  ? parsedHops
-  : 2;
+const trustProxyHops = !isNaN(parsedHops) ? parsedHops : 0;
 app.set('trust proxy', trustProxyHops);
 
 // Redis client for rate limiting (with fallback to memory store)
