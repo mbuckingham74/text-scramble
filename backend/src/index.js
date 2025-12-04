@@ -30,7 +30,11 @@ if (isProduction && !process.env.TRUST_PROXY_HOPS) {
 }
 
 const parsedHops = Number(process.env.TRUST_PROXY_HOPS);
-const trustProxyHops = !isNaN(parsedHops) ? parsedHops : 0;
+if (process.env.TRUST_PROXY_HOPS && isNaN(parsedHops)) {
+  console.error(`FATAL: TRUST_PROXY_HOPS must be a number, got: "${process.env.TRUST_PROXY_HOPS}"`);
+  process.exit(1);
+}
+const trustProxyHops = parsedHops || 0;
 app.set('trust proxy', trustProxyHops);
 
 // Redis client for rate limiting (with fallback to memory store)
@@ -450,7 +454,6 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Cookie settings for admin session
-const isProduction = process.env.NODE_ENV === 'production';
 const ADMIN_COOKIE_NAME = 'wordtwist_admin_session';
 const adminCookieOptions = {
   httpOnly: true,
