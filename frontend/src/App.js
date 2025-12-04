@@ -130,6 +130,8 @@ function WordTwist() {
   const criticalPlayedRef = useRef(false);
   const lettersRef = useRef([]);
   const selectedIndicesRef = useRef([]);
+  const currentWordRef = useRef('');
+  const foundWordsRef = useRef([]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -143,6 +145,14 @@ function WordTwist() {
   useEffect(() => {
     selectedIndicesRef.current = selectedIndices;
   }, [selectedIndices]);
+
+  useEffect(() => {
+    currentWordRef.current = currentWord;
+  }, [currentWord]);
+
+  useEffect(() => {
+    foundWordsRef.current = foundWords;
+  }, [foundWords]);
 
   const showMessage = useCallback((text, type = 'info') => {
     // Clear any existing timeout
@@ -412,10 +422,11 @@ function WordTwist() {
       return [...prev, index];
     });
     setCurrentWord(prev => {
-      if (selectedIndices.includes(index)) return prev;
-      return prev + letters[index];
+      // Use refs to avoid dependency on letters/selectedIndices
+      if (selectedIndicesRef.current.includes(index)) return prev;
+      return prev + lettersRef.current[index];
     });
-  }, [letters, selectedIndices]);
+  }, []);
 
   const removeLetter = useCallback(() => {
     setSelectedIndices(prev => {
@@ -435,15 +446,20 @@ function WordTwist() {
   }, []);
 
   const submitWord = useCallback(async () => {
-    if (currentWord.length < MIN_WORD_LENGTH) {
+    // Use refs to avoid dependencies on frequently-changing state
+    const word = currentWordRef.current;
+    const found = foundWordsRef.current;
+    const currentLetters = lettersRef.current;
+
+    if (word.length < MIN_WORD_LENGTH) {
       sounds.wordInvalid();
       showMessage(`Words must be at least ${MIN_WORD_LENGTH} letters!`, 'error');
       clearSelection();
       return;
     }
 
-    const upperWord = currentWord.toUpperCase();
-    if (foundWords.includes(upperWord)) {
+    const upperWord = word.toUpperCase();
+    if (found.includes(upperWord)) {
       sounds.wordDuplicate();
       showMessage('Already found!', 'error');
       clearSelection();
@@ -455,18 +471,18 @@ function WordTwist() {
       const data = await authFetch(`${API_URL}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: currentWord, sessionId: currentSessionId })
+        body: JSON.stringify({ word, sessionId: currentSessionId })
       });
 
       if (data.valid) {
-        const word = data.word.toUpperCase(); // Ensure consistent casing
-        setFoundWords(prev => [...prev, word]);
+        const validWord = data.word.toUpperCase(); // Ensure consistent casing
+        setFoundWords(prev => [...prev, validWord]);
 
         // Use points from server if provided, otherwise calculate locally
-        const points = data.points || calculatePoints(word.length);
+        const points = data.points || calculatePoints(validWord.length);
         setScore(prev => prev + points);
 
-        if (word.length === letters.length) {
+        if (validWord.length === currentLetters.length) {
           sounds.wordExcellent();
           setFoundFullWord(true);
           showMessage('EXCELLENT! Full word found!', 'success');
@@ -484,7 +500,7 @@ function WordTwist() {
     }
 
     clearSelection();
-  }, [currentWord, foundWords, letters, showMessage, clearSelection, authFetch]);
+  }, [showMessage, clearSelection, authFetch]);
 
   const endRound = useCallback(async () => {
     if (foundFullWord) {
