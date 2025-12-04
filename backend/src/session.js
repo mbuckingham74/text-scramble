@@ -1,7 +1,11 @@
 const crypto = require('crypto');
+const { TIMER_DURATION } = require('./constants');
 
 // Game session expiry time (2 hours - enough for a long game)
 const SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+// Grace period for timed mode (allows for network latency)
+const TIMED_MODE_GRACE_SECONDS = 5;
 
 // Admin session expiry time (8 hours)
 const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
@@ -195,6 +199,17 @@ function recordWordMemory(sessionId, session, word, points) {
   return { success: true, sessionScore: session.score };
 }
 
+// Check if a timed session has exceeded its time limit
+function isTimedSessionExpired(session) {
+  if (session.gameMode !== 'timed') {
+    return false; // Untimed sessions never expire due to timer
+  }
+
+  const elapsedMs = Date.now() - session.createdAt;
+  const allowedMs = (TIMER_DURATION + TIMED_MODE_GRACE_SECONDS) * 1000;
+  return elapsedMs > allowedMs;
+}
+
 // Get session summary for score submission
 async function getSessionSummary(sessionId) {
   const session = await getSession(sessionId);
@@ -206,7 +221,8 @@ async function getSessionSummary(sessionId) {
     gameMode: session.gameMode,
     wordsFound: session.foundWords.length,
     score: session.score,
-    foundWords: session.foundWords
+    foundWords: session.foundWords,
+    createdAt: session.createdAt
   };
 }
 
@@ -366,6 +382,7 @@ module.exports = {
   getSessionSummary,
   endSession,
   getSessionCount,
+  isTimedSessionExpired,
   // Admin session exports
   createAdminSession,
   validateAdminSession,

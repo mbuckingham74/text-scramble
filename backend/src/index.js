@@ -11,7 +11,7 @@ const { calculatePoints } = require('./constants');
 const db = require('./db');
 const { generateToken, authMiddleware } = require('./auth');
 const { registerSchema, loginSchema, validateWordSchema, solutionsSchema, scoreSchema, validate } = require('./validation');
-const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount, createAdminSession, validateAdminSession, deleteAdminSession, ADMIN_SESSION_TTL_MS } = require('./session');
+const { initSessionStore, setRedisReady, createSession, getSession, recordWord, getSessionSummary, endSession, getSessionCount, isTimedSessionExpired, createAdminSession, validateAdminSession, deleteAdminSession, ADMIN_SESSION_TTL_MS } = require('./session');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -245,6 +245,11 @@ app.post('/api/validate', gameLimiter, validate(validateWordSchema), async (req,
     return res.status(400).json({ valid: false, word: upperWord, error: 'Invalid or expired session' });
   }
 
+  // Check if timed session has exceeded time limit
+  if (isTimedSessionExpired(session)) {
+    return res.status(400).json({ valid: false, word: upperWord, error: 'Time expired' });
+  }
+
   // Validate word against the session's letters
   const isValid = validateWord(upperWord, session.letters);
   const points = isValid ? calculatePoints(upperWord.length) : 0;
@@ -342,7 +347,20 @@ app.post('/api/scores', scoreLimiter, authMiddleware, validate(scoreSchema), asy
   const { sessionId } = req.validated;
   const userId = req.user.userId; // From JWT token, not request body
 
-  // Session is required - no legacy fallback to prevent score tampering
+  // Get session first to check timer before ending
+  const session = await getSession(sessionId);
+  if (!session) {
+    return res.status(400).json({ error: 'Invalid or expired game session' });
+  }
+
+  // Check if timed session has exceeded time limit
+  if (isTimedSessionExpired(session)) {
+    // End the session but reject the score
+    await endSession(sessionId);
+    return res.status(400).json({ error: 'Time expired - score not recorded' });
+  }
+
+  // Session is valid - end it and get summary
   const summary = await endSession(sessionId);
   if (!summary) {
     return res.status(400).json({ error: 'Invalid or expired game session' });
