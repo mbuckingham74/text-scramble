@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
-import sounds from './sounds';
+import sounds, { SoundEffects } from './sounds';
 import {
   TIMER_DURATION,
   TIMER_WARNING_THRESHOLD,
@@ -110,7 +110,23 @@ function WordTwist() {
   const [messageType, setMessageType] = useState('');
   const [foundFullWord, setFoundFullWord] = useState(false);
   const [timedMode, setTimedMode] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    // Check if user has a saved preference
+    if (storageAvailable) {
+      const saved = localStorage.getItem('wordtwist_sound');
+      if (saved !== null) {
+        const enabled = saved === 'true';
+        sounds.setEnabled(enabled);
+        return enabled;
+      }
+    }
+    // No saved preference: respect prefers-reduced-motion accessibility setting
+    if (SoundEffects.prefersReducedMotion()) {
+      sounds.setEnabled(false);
+      return false;
+    }
+    return true;
+  });
 
   // Auth state
   const [user, setUser] = useState(() => safeGetJSON('wordtwist_user'));
@@ -179,6 +195,7 @@ function WordTwist() {
   const toggleSound = () => {
     const enabled = sounds.toggle();
     setSoundEnabled(enabled);
+    safeSetItem('wordtwist_sound', enabled.toString());
   };
 
   const handleLogin = async (username, password) => {
