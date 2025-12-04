@@ -21,6 +21,15 @@ class SoundEffects {
     return this.enabled;
   }
 
+  setEnabled(enabled) {
+    this.enabled = enabled;
+  }
+
+  // Check if user prefers reduced motion (accessibility)
+  static prefersReducedMotion() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  }
+
   // Play a tone with given frequency, duration, and type
   playTone(frequency, duration, type = 'sine', volume = 0.3) {
     if (!this.enabled) return;
@@ -196,6 +205,7 @@ class SoundEffects {
   }
 }
 
-// Export singleton instance
+// Export singleton instance and class (for static methods)
 const sounds = new SoundEffects();
 export default sounds;
+export { SoundEffects };
