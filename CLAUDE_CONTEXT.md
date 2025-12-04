@@ -35,12 +35,16 @@ word-twist/
 │   │   ├── validation.js   # Zod schemas for input validation
 │   │   ├── session.js      # Redis-backed game sessions for score verification
 │   │   ├── game.js         # Puzzle generation & word validation
-│   │   ├── game.test.js    # Automated tests (run with npm test)
+│   │   ├── game.test.js    # Automated tests for game logic
+│   │   ├── constants.js    # Shared constants (TIMER_DURATION)
+│   │   ├── constants.test.js # Tests for constants
+│   │   ├── session.test.js # Tests for session timer expiry
 │   │   ├── dictionary.js   # Word dictionary loader
 │   │   ├── db.js           # MySQL connection pool (env var required in prod)
 │   │   └── words.txt       # Dictionary (~53K words, 3-8 letters)
 │   ├── init.sql            # Database schema
-│   ├── Dockerfile
+│   ├── Dockerfile          # Alpine + build deps for bcrypt
+│   ├── .dockerignore       # Excludes node_modules, .env, tests
 │   └── package.json
 ├── docker-compose.yml      # Orchestrates frontend, backend, mysql
 ├── .env                    # Environment variables (JWT_SECRET) - not in git
@@ -264,3 +268,9 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
     - Atomic word recording via Lua script prevents race conditions (concurrent duplicate submissions)
     - `/api/validate` and `/api/scores` require sessionId; `/api/solutions` uses session letters
     - Frontend updated to pass sessionId on all game operations
+14. **Security hardening** (Dec 2024):
+    - **Timed mode server-side enforcement**: Server validates session hasn't exceeded `TIMER_DURATION` (2 min) + 5 second grace period. Expired timed sessions are rejected and cleaned up on `/api/validate`, `/api/solutions`, and `/api/scores`
+    - **Session counting optimization**: Replaced Redis `KEYS` command with `SCAN` for non-blocking enumeration in `getSessionCount()`. Uses Set to dedupe (SCAN can return duplicates)
+    - **Docker build optimization**: Added `backend/.dockerignore` to exclude node_modules, .env, test files. Build dependencies (python3, make, g++) installed in virtual layer and removed after `npm ci`
+    - **Password policy strengthened**: Minimum 8 characters, must contain lowercase + uppercase + number
+    - **Test coverage**: Added `session.test.js` with 6 tests for timer expiry logic (untimed sessions, fresh/expired timed sessions, grace period boundary)
