@@ -128,11 +128,21 @@ function WordTwist() {
   const timerRef = useRef(null);
   const warningPlayedRef = useRef(false);
   const criticalPlayedRef = useRef(false);
+  const lettersRef = useRef([]);
+  const selectedIndicesRef = useRef([]);
 
   // Keep refs in sync with state
   useEffect(() => {
     gameStateRef.current = { score, level, foundWords, timedMode, user, sessionId };
   }, [score, level, foundWords, timedMode, user, sessionId]);
+
+  useEffect(() => {
+    lettersRef.current = letters;
+  }, [letters]);
+
+  useEffect(() => {
+    selectedIndicesRef.current = selectedIndices;
+  }, [selectedIndices]);
 
   const showMessage = useCallback((text, type = 'info') => {
     // Clear any existing timeout
@@ -562,7 +572,7 @@ function WordTwist() {
     }
   }, [gameState, timeLeft, endRound]);
 
-  // Keyboard controls
+  // Keyboard controls - uses refs for letters/selectedIndices to avoid rebinding on every keystroke
   useEffect(() => {
     if (gameState !== 'playing') return;
 
@@ -579,8 +589,11 @@ function WordTwist() {
         clearSelection();
       } else if (e.key.match(/^[a-zA-Z]$/)) {
         const letter = e.key.toUpperCase();
-        const index = letters.findIndex((l, i) =>
-          l.toUpperCase() === letter && !selectedIndices.includes(i)
+        // Use refs to get current values without causing effect re-runs
+        const currentLetters = lettersRef.current;
+        const currentSelected = selectedIndicesRef.current;
+        const index = currentLetters.findIndex((l, i) =>
+          l.toUpperCase() === letter && !currentSelected.includes(i)
         );
         if (index !== -1) {
           selectLetter(index);
@@ -590,7 +603,7 @@ function WordTwist() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, letters, selectedIndices, submitWord, removeLetter, shuffleLetters, clearSelection, selectLetter]);
+  }, [gameState, submitWord, removeLetter, shuffleLetters, clearSelection, selectLetter]);
 
   const formatTime = (seconds) => {
     if (seconds === -1) return '∞';
