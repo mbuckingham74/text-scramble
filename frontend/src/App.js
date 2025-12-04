@@ -125,6 +125,9 @@ function WordTwist() {
   // Refs for stable references in callbacks
   const messageTimeoutRef = useRef(null);
   const gameStateRef = useRef({ score: 0, level: 1, foundWords: [], timedMode: true, user: null, sessionId: null });
+  const timerRef = useRef(null);
+  const warningPlayedRef = useRef(false);
+  const criticalPlayedRef = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -510,27 +513,53 @@ function WordTwist() {
     }
   }, [foundFullWord, submitScore, authFetch]);
 
-  // Timer effect
+  // Timer effect - single interval, sounds play once per threshold crossing
   useEffect(() => {
-    if (gameState !== 'playing' || timeLeft === -1) return;
+    // Reset sound flags when starting a new game
+    warningPlayedRef.current = false;
+    criticalPlayedRef.current = false;
 
-    if (timeLeft <= 0) {
-      endRound();
+    // Only run timer in timed mode while playing
+    if (gameState !== 'playing' || !timedMode) {
       return;
     }
 
-    // Timer warning sounds
-    if (timeLeft <= TIMER_CRITICAL_THRESHOLD && timeLeft > 0) {
-      sounds.timerCritical();
-    } else if (timeLeft <= TIMER_WARNING_THRESHOLD && timeLeft > 0) {
-      sounds.timerTick();
-    }
+    // Start a single interval
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 0) return t; // Don't go negative
 
-    const timer = setInterval(() => {
-      setTimeLeft(t => t - 1);
+        const newTime = t - 1;
+
+        // Play warning sound once when crossing threshold
+        if (newTime <= TIMER_WARNING_THRESHOLD && newTime > TIMER_CRITICAL_THRESHOLD && !warningPlayedRef.current) {
+          sounds.timerTick();
+          warningPlayedRef.current = true;
+        }
+
+        // Play critical sound once when crossing threshold
+        if (newTime <= TIMER_CRITICAL_THRESHOLD && newTime > 0 && !criticalPlayedRef.current) {
+          sounds.timerCritical();
+          criticalPlayedRef.current = true;
+        }
+
+        return newTime;
+      });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [gameState, timedMode]);
+
+  // Handle timer expiry separately to avoid stale closure
+  useEffect(() => {
+    if (gameState === 'playing' && timeLeft === 0) {
+      endRound();
+    }
   }, [gameState, timeLeft, endRound]);
 
   // Keyboard controls
