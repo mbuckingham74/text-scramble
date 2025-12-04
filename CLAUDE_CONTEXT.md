@@ -81,7 +81,8 @@ Express API endpoints:
 
 ### Backend - validation.js
 Zod schemas for all inputs:
-- `registerSchema` / `loginSchema` - username (3-20 chars), password (4-100 chars)
+- `registerSchema` - username (3-20 chars), password (8-100 chars, must have lowercase + uppercase + number)
+- `loginSchema` - username (1+ chars), password (1+ chars)
 - `validateWordSchema` - word (3-8 letters), letters (array of 6-8)
 - `solutionsSchema` - letters array
 - `scoreSchema` - score (0-1M), level (1-1000), wordsFound (0-500), gameMode enum

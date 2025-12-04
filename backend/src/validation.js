@@ -1,9 +1,18 @@
 const { z } = require('zod');
 const { MIN_WORD_LENGTH, MAX_WORD_LENGTH } = require('./constants');
 
+// Password must be at least 8 characters with mixed character types
+const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(100)
+  .refine(
+    (pw) => /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[0-9]/.test(pw),
+    'Password must contain lowercase, uppercase, and a number'
+  );
+
 const registerSchema = z.object({
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
-  password: z.string().min(4).max(100)
+  password: passwordSchema
 });
 
 const loginSchema = z.object({

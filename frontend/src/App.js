@@ -619,7 +619,7 @@ function WordTwist() {
             handleRegister(form.username.value, form.password.value);
           }}>
             <input type="text" name="username" placeholder="Username (3-20 chars)" required />
-            <input type="password" name="password" placeholder="Password (4+ chars)" required />
+            <input type="password" name="password" placeholder="Password (8+ chars, mixed case + number)" required minLength="8" />
             <button type="submit" className="btn primary">Register</button>
           </form>
           <p className="auth-switch">
