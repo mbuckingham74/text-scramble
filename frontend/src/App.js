@@ -66,9 +66,17 @@ const safeRemoveItem = (key) => {
 };
 
 // API helper with proper error handling
-const apiFetch = async (url, options = {}) => {
-  const response = await fetch(url, options);
+// - Always includes credentials for cross-origin cookie support
+// - Calls onAuthError callback on 401 responses for centralized session expiry handling
+const apiFetch = async (url, options = {}, onAuthError = null) => {
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'include'
+  });
   if (!response.ok) {
+    if (response.status === 401 && onAuthError) {
+      onAuthError();
+    }
     const data = await response.json().catch(() => ({}));
     const error = new Error(data.error || `Request failed: ${response.status}`);
     error.status = response.status;
@@ -156,7 +164,6 @@ function WordTwist() {
       const data = await apiFetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
       if (data.success) {
@@ -179,7 +186,6 @@ function WordTwist() {
       const data = await apiFetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
       if (data.success) {
@@ -198,10 +204,7 @@ function WordTwist() {
 
   const handleLogout = useCallback(async () => {
     try {
-      await fetch(`${API_URL}/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await apiFetch(`${API_URL}/logout`, { method: 'POST' });
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -211,20 +214,15 @@ function WordTwist() {
 
   const refreshAdminStats = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/stats`, {
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const stats = await response.json();
-        setAdminStats(stats);
-        return true;
-      } else if (response.status === 401) {
+      const stats = await apiFetch(`${API_URL}/admin/stats`);
+      setAdminStats(stats);
+      return true;
+    } catch (error) {
+      if (error.status === 401) {
         // Session expired or not logged in
         setAdminStats(null);
         return false;
       }
-    } catch (error) {
       console.error('Failed to refresh admin stats:', error);
     }
     return false;
@@ -234,37 +232,27 @@ function WordTwist() {
     setAdminError('');
     try {
       // Login via POST - server sets httpOnly session cookie
-      const loginResponse = await fetch(`${API_URL}/admin/login`, {
+      await apiFetch(`${API_URL}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
-
-      if (!loginResponse.ok) {
-        const data = await loginResponse.json().catch(() => ({}));
-        if (loginResponse.status === 401) {
-          setAdminError('Invalid admin credentials');
-        } else {
-          setAdminError(data.error || 'Failed to access admin panel');
-        }
-        return;
-      }
 
       // Fetch stats after successful login
       await refreshAdminStats();
       setGameState('admin');
     } catch (error) {
-      setAdminError('Failed to connect to server');
+      if (error.status === 401) {
+        setAdminError('Invalid admin credentials');
+      } else {
+        setAdminError(error.message || 'Failed to access admin panel');
+      }
     }
   };
 
   const handleAdminLogout = async () => {
     try {
-      await fetch(`${API_URL}/admin/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await apiFetch(`${API_URL}/admin/logout`, { method: 'POST' });
     } catch (error) {
       console.error('Failed to logout:', error);
     }
@@ -279,9 +267,14 @@ function WordTwist() {
     setApiError('Your session has expired. Please log in again.');
   }, [handleLogout]);
 
+  // Wrapper around apiFetch that automatically handles 401 errors
+  const authFetch = useCallback((url, options = {}) => {
+    return apiFetch(url, options, handleAuthError);
+  }, [handleAuthError]);
+
   const fetchLeaderboard = useCallback(async () => {
     try {
-      const data = await apiFetch(`${API_URL}/leaderboard`);
+      const data = await authFetch(`${API_URL}/leaderboard`);
       setLeaderboard({
         timed: data.timed || [],
         untimed: data.untimed || []
@@ -291,7 +284,7 @@ function WordTwist() {
       console.error('Failed to fetch leaderboard:', error);
       setApiError('Failed to load leaderboard. Please refresh the page.');
     }
-  }, []);
+  }, [authFetch]);
 
   // Fetch leaderboard on initial load
   useEffect(() => {
@@ -307,27 +300,25 @@ function WordTwist() {
       return;
     }
     try {
-      await apiFetch(`${API_URL}/scores`, {
+      await authFetch(`${API_URL}/scores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ sessionId: currentSessionId })
       });
     } catch (error) {
       console.error('Failed to submit score:', error);
-      if (error.status === 401) {
-        handleAuthError();
-      } else {
+      // 401 errors are handled automatically by authFetch
+      if (error.status !== 401) {
         setApiError('Failed to save your score. It may not appear on the leaderboard.');
       }
     }
-  }, [handleAuthError]);
+  }, [authFetch]);
 
   const startNewRound = useCallback(async (timed = timedMode, puzzleLevel = 1) => {
     setApiError(''); // Clear errors when starting new round
     try {
       const mode = timed ? 'timed' : 'untimed';
-      const data = await apiFetch(`${API_URL}/puzzle?level=${puzzleLevel}&mode=${mode}`);
+      const data = await authFetch(`${API_URL}/puzzle?level=${puzzleLevel}&mode=${mode}`);
 
       setLetters(data.letters);
       setWordsByLength(data.wordsByLength);
@@ -344,7 +335,7 @@ function WordTwist() {
       setApiError('Failed to load puzzle. Please try again.');
       showMessage('Failed to load puzzle. Please try again.', 'error');
     }
-  }, [timedMode, showMessage]);
+  }, [timedMode, showMessage, authFetch]);
 
   const startGame = useCallback(async (timed = true) => {
     sounds.gameStart();
@@ -448,7 +439,7 @@ function WordTwist() {
 
     try {
       const { sessionId: currentSessionId } = gameStateRef.current;
-      const data = await apiFetch(`${API_URL}/validate`, {
+      const data = await authFetch(`${API_URL}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ word: currentWord, sessionId: currentSessionId })
@@ -480,7 +471,7 @@ function WordTwist() {
     }
 
     clearSelection();
-  }, [currentWord, foundWords, letters, showMessage, clearSelection]);
+  }, [currentWord, foundWords, letters, showMessage, clearSelection, authFetch]);
 
   const endRound = useCallback(async () => {
     if (foundFullWord) {
@@ -493,7 +484,7 @@ function WordTwist() {
 
       // Fetch updated leaderboard and check if player made it
       try {
-        const data = await apiFetch(`${API_URL}/leaderboard`);
+        const data = await authFetch(`${API_URL}/leaderboard`);
         const updatedLeaderboard = {
           timed: data.timed || [],
           untimed: data.untimed || []
@@ -517,7 +508,7 @@ function WordTwist() {
 
       setGameState('gameOver');
     }
-  }, [foundFullWord, submitScore]);
+  }, [foundFullWord, submitScore, authFetch]);
 
   // Timer effect
   useEffect(() => {
