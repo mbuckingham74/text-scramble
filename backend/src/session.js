@@ -254,17 +254,20 @@ async function getSessionCount() {
 
   if (redisClient && redisReady) {
     try {
+      const keys = new Set();
       let cursor = 0;
-      let redisCount = 0;
       do {
         const result = await redisClient.scan(cursor, {
           MATCH: 'wordtwist:session:*',
           COUNT: 100
         });
         cursor = result.cursor;
-        redisCount += result.keys.length;
+        // SCAN can return duplicates, so use Set to dedupe
+        for (const key of result.keys) {
+          keys.add(key);
+        }
       } while (cursor !== 0);
-      count = redisCount;
+      count = keys.size;
     } catch (err) {
       console.error('Redis session count error:', err.message);
     }
