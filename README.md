@@ -15,7 +15,7 @@
 
 <br/>
 
-*Unscramble letters. Find words. Beat the clock.*
+*Unscramble letters. Find words. Beat the clock. Improve touch typing skills*
 
 </div>
 
