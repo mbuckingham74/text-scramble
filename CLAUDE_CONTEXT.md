@@ -10,7 +10,7 @@ A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
 - **Cache/Rate Limiting**: Redis (shared with Authelia, using database 1)
 - **Deployment**: Docker Compose on tachyonfuture.com server
 - **SSL**: Nginx Proxy Manager (NPM) handles SSL termination
-- **Analytics**: Matomo (site ID 10 on matomo.tachyonfuture.com)
+- **Analytics**: No client analytics integration
 
 ## Project Structure
 
@@ -18,7 +18,7 @@ A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
 word-twist/
 ├── frontend/
 │   ├── public/
-│   │   └── index.html      # HTML template with Matomo tracking
+│   │   └── index.html      # HTML template
 │   ├── src/
 │   │   ├── App.js          # Main game component (all game logic & screens)
 │   │   ├── App.css         # All styling
@@ -205,7 +205,7 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
    - Sound toggle moved to fixed position (upper right)
    - Message overlay (centered pop-in) instead of pushing content
    - All Words section height increased to 400px
-4. **Analytics**: Matomo tracking added (site ID 10)
+4. **Analytics**: No client analytics integration
 5. **Bug fixes**:
    - Stale closure fix using refs for game state
    - Safe localStorage parsing with try/catch
@@ -246,7 +246,7 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
 11. **Client-side routing** (Dec 2024):
     - Added react-router-dom for distinct URLs per game mode
     - Routes: `/` (menu), `/timed`, `/untimed`, `/admin`
-    - Enables Matomo to track which game modes are most popular
+    - Provides distinct URLs for each game mode
     - Direct links to game modes start the game immediately
 12. **Puzzle quality fixes** (Dec 2024):
     - Fixed validation schemas: `validateWordSchema` and `solutionsSchema` now accept 6-8 letters (was hard-capped to 6)
