@@ -1,6 +1,6 @@
 # Word Twist - Project Context
 
-A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
+A Text Twist 2 clone maintained as a local development source.
 
 ## Tech Stack
 
@@ -8,8 +8,7 @@ A Text Twist 2 clone deployed at **https://twist.tachyonfuture.com**
 - **Backend**: Node.js/Express API with JWT authentication
 - **Database**: MySQL 8
 - **Cache/Rate Limiting**: Redis (shared with Authelia, using database 1)
-- **Deployment**: Docker Compose on tachyonfuture.com server
-- **SSL**: Nginx Proxy Manager (NPM) handles SSL termination
+- **Deployment**: Docker Compose for local full-stack development
 - **Analytics**: No client analytics integration
 
 ## Project Structure
@@ -111,23 +110,10 @@ scores: id, user_id, score, level, words_found, game_mode ENUM('timed','untimed'
 | `ADMIN_USERNAME` | Optional | Admin dashboard username |
 | `ADMIN_PASSWORD` | Optional | Admin dashboard password |
 | `TRUST_PROXY_HOPS` | Recommended | Number of proxy hops for correct IP detection (1 for NPM → app, 2 for Cloudflare → NPM → app). Warns if not set in production. |
-| `CORS_ORIGINS` | Optional | Comma-separated allowed origins (default: twist.tachyonfuture.com + localhost) |
+| `CORS_ORIGINS` | Optional | Comma-separated allowed origins for the current deployment environment |
 | `COOKIE_SECURE` | Optional | Set to `false` for HTTP-only deployments. Defaults to `true` in production. |
 
 Generate JWT secret: `openssl rand -base64 32`
-
-## Deployment Commands
-
-```bash
-# Push and deploy
-git push && ssh michael@tachyonfuture.com "cd ~/text-scramble && git pull && docker compose up -d --build"
-
-# Just rebuild
-ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose up -d --build"
-
-# View logs
-ssh michael@tachyonfuture.com "cd ~/text-scramble && docker compose logs -f backend"
-```
 
 ## Game Rules
 
@@ -189,7 +175,7 @@ Nginx `try_files` directive handles SPA routing by falling back to `index.html`.
   - Game endpoints (puzzle/validate/solutions): 300 per min
   - Score submission: 20 per min
   - General (leaderboard, etc): 200 per min
-- CORS restricted to twist.tachyonfuture.com and localhost
+- CORS restricted to configured origins
 - Zod input validation on all endpoints
 - Environment variables required in production (no hardcoded credentials)
 - Password hashing with bcrypt (10 rounds)
